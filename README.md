@@ -105,6 +105,7 @@ pip install pandas numpy openpyxl
 ```bash
 # Installation
 curl -fsSL https://ollama.ai/install.sh | sh
+https://ollama.com/install.ps1
 
 # Modèle recommandé
 ollama pull qwen2.5:14b
