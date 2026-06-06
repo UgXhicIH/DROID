@@ -6,15 +6,16 @@
 ---
 
 ## Présentation
+<img width="927" height="1314" alt="image" src="https://github.com/user-attachments/assets/81343b9c-fdc6-4eb7-917c-8f1b8d5f4683" />
 
-PROTEOGEN est un pipeline de peptidomique computationnelle conçu pour prédire les activités biologiques de peptides à partir de leurs séquences, en s'appuyant sur une architecture de Deep Learning combinant :
+DROID est un pipeline de peptidomique computationnelle conçu pour prédire les activités biologiques de peptides à partir de leurs séquences, en s'appuyant sur une architecture de Deep Learning combinant :
 
 - **ESM-2 (650M paramètres)** de Meta AI pour les embeddings token-level (1280D)
-- **CNN 1D (Keras)** pour la classification binaire par activité
+- **CNN 1D (Keras 3)** pour la classification binaire par activité
 - **Monte Carlo Dropout (40 passes)** pour l'estimation bayésienne de l'incertitude
 - **Platt Scaling post-hoc** pour la calibration des probabilités
 
-L'interface est pilotée par un **agent LLM local (Ollama)** interprétant les requêtes en langage naturel, permettant à des chercheurs de lancer et configurer des analyses sans écrire de code.
+L'interface est pilotée par un **agent LLM local (Ollama : Qwen2.5:14b)** interprétant les requêtes en langage naturel, permettant à des chercheurs de lancer et configurer des analyses sans écrire de code.
 
 ---
 
@@ -27,10 +28,10 @@ PROTEOGEN/
 ├── Dev_proteogen_pipeline.py      # Pipeline principal + modules optionnels
 ├── proteogen_pipeline_token.py    # Version alternative du pipeline (token-level)
 ├── Clustering_PepFuNN_1280D_UMAP.py  # Module de clustering (PepFuNN/Butina + UMAP 3D)
-├── Dev_deepseek_interpreter.py    # Interpréteur LLM post-clustering (Qwen3-32B)
+├── Dev_deepseek_interpreter.py    # Interpréteur LLM post-clustering (Qwen3-32B_Q5)
 ├── restyle_droid.py               # Thème visuel DROID pour l'interface Streamlit
 │
-├── Model_TOKEN_CNN_PROTEOGEN_1280D/   # Modèles CNN Keras (28 activités)
+├── Model_TOKEN_CNN_PROTEOGEN_1280D/   # Modèles CNN Keras (31 activités)
 │   └── *.keras
 │
 ├── Graph_UniDL_Prediction_1280D/  # Graphiques HTML Plotly (XAI, radar VHSE, reliability)
@@ -47,7 +48,7 @@ PROTEOGEN/
 
 | Module | Description | Activation |
 |--------|-------------|------------|
-| **Prédictions DL** | ESM-2 + CNN + MC Dropout (28 modèles) | Toujours actif |
+| **Prédictions DL** | ESM-2 + CNN + MC Dropout (31 modèles) | Toujours actif |
 | **Physico-chimie** | MW, pI, VHSE, Z-Scales, Cruciani, MS-WHIM | Toujours actif |
 | **SMILES** | Génération via RDKit + gestion PTMs |
 | **XAI** | Alanine Scanning informatique (top 10 peptides) |
@@ -58,18 +59,14 @@ PROTEOGEN/
 
 ---
 
-## Activités biologiques prédites (28 modèles)
+## Activités biologiques prédites (31 modèles)
 
 | Catégorie | Activités |
 |-----------|-----------|
-| **Signalisation** | Chimiotaxie, Cytokine, Régulation_Hormonale, Neuropeptide |
-| **Transport** | Pénétration_cellulaire, Drug_Delivery |
-| **Toxicité** | Activité_Hémolytique, Cytotoxicité, Neurotoxicité, Toxicité, Allergène |
-| **Anti-infectieux** | Anti_Virale, Anti_Bacterien, Anti_Fongique, Anti_Parasitique, Anti_MRSA, Anti_Biofilm, Quorum_Sensing |
-| **Cardiovasculaire / Métabolique** | Anti_Hyper_Tension, Dipeptidyl_peptidase_IV |
-| **Inflammatoire / Neurologique** | Anti_Inflammatoire, Anti_Age, Anti_Amnésique |
-| **Oncologie** | Anti_Cancer, Anti_Tumeur |
-| **Autres** | Anti_Oxydant, Opioïde, Umami |
+| **Signalisation** | Chimiotaxie, Cytokine, Régulation_Hormonale, Pénétration_cellulaire, Drug_Delivery, Stimulation eznymatique  |
+| **Toxicité** | Activité_Hémolytique, Cytotoxicité, Neurotoxicité, Toxicité, Allergène, Anti toxine, Opioïde |
+| **Anti-microbien** | Anti_Virale, Anti_Bacterien, Anti_Fongique, Anti_Parasitique, Anti_MRSA, Anti_Biofilm, Quorum_Sensing |
+| **Thérapeutique** | Anti hyper-tension,Anti hypo-tension, Inhibition de la Dipeptidyl_peptidase_IV, Anti_Inflammatoire, Anti_Age, Anti_Amnésique, Neuropeptide, Anti_Cancer, Anti_Tumeur, Anti-oxydant, Anti-diabétique |
 
 ---
 
@@ -260,7 +257,7 @@ export PROTEOGEN_NTFY_URL="https://ntfy.sh"  # ou instance auto-hébergée
 | `PROTEOGEN_NTFY_TOPIC` | `proteogen_UgXhicIH` | Topic ntfy pour les notifications |
 | `PROTEOGEN_NTFY_URL` | `https://ntfy.sh` | URL du serveur ntfy |
 | `OLLAMA_KEEP_ALIVE` | `5m` | Durée de conservation des modèles Ollama en mémoire |
-| `TF_ENABLE_ONEDNN_OPTS` | `1` | Optimisations oneDNN pour TensorFlow (CPU) |
+| `TF_ENABLE_ONEDNN_OPTS` | `1` | Optimisations oneDNN pour TensorFlow (CPU), utilisation de l'accélérateur AVX-512 |
 | `KMP_DUPLICATE_LIB_OK` | `True` | Évite les conflits MKL/OpenMP |
 
 ---
