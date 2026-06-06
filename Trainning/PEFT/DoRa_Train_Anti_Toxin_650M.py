@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Morgan Letoux. All rights reserved.
+# This file is part of PROTEOGEN/DROID.
+# Unauthorized use, reproduction or distribution is strictly prohibited.
+# See LICENSE for details.
 """
 FineTune_ESM2_LoRA_for_CNN.py  —  Template générique (adapter TASK_NAME / EXCEL_FILE)
 
