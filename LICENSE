@@ -1,0 +1,83 @@
+PROTEOGEN — DROID
+Proprietary Research License
+
+Copyright (c) 2026 Morgan Letoux. All rights reserved.
+
+================================================================================
+TERMS AND CONDITIONS
+================================================================================
+
+1. DEFINITIONS
+
+   "Software" refers to the PROTEOGEN/DROID source code, pipeline modules,
+   models, configuration files, documentation, and any associated materials
+   contained in this repository.
+
+   "Author" refers to Morgan Letoux, the sole copyright holder.
+
+   "You" refers to any individual or entity accessing this repository.
+
+2. GRANT OF RIGHTS — VIEWING ONLY
+
+   The Author grants You a limited, non-exclusive, non-transferable right to
+   VIEW the source code of this Software solely for informational and
+   educational purposes.
+
+   No other rights are granted by this License.
+
+3. RESTRICTIONS
+
+   Unless You have received prior written permission from the Author, You are
+   expressly PROHIBITED from:
+
+   a) Copying, reproducing, or duplicating the Software or any portion thereof;
+   b) Modifying, adapting, translating, or creating derivative works based on
+      the Software;
+   c) Distributing, sublicensing, selling, renting, lending, or otherwise
+      transferring the Software to any third party;
+   d) Using the Software, in whole or in part, in any product, service,
+      pipeline, or system — whether commercial or non-commercial;
+   e) Using the Software for any purpose other than personal review;
+   f) Reverse engineering, decompiling, or disassembling the Software;
+   g) Removing or altering any copyright notices or this License.
+
+4. ACADEMIC & RESEARCH USE
+
+   Access to this Software through a public repository does not constitute
+   a license for academic or research use. Any use of this Software in a
+   research context — including but not limited to running analyses, integrating
+   it into a pipeline, reproducing results, or citing methods — requires
+   explicit prior written authorization from the Author.
+
+   To request authorization, contact the Author directly.
+
+5. NO WARRANTY
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL
+   THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN
+   AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF, OR IN
+   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+6. TERMINATION
+
+   Any use of the Software in violation of this License automatically and
+   immediately terminates any rights granted herein. Upon termination, You must
+   destroy all copies of the Software in Your possession.
+
+7. GOVERNING LAW
+
+   This License shall be governed by and construed in accordance with the laws
+   of France, without regard to its conflict of law provisions.
+
+8. CONTACT
+
+   For permissions, collaborations, or any inquiries regarding this Software:
+
+   Morgan Letoux
+   GitHub : https://github.com/UgXhicIH/DROID
+
+================================================================================
+All rights not expressly granted herein are reserved by the Author.
+================================================================================
