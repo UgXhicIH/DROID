@@ -1,4 +1,4 @@
-# 🧬 PROTEOGEN — Pipeline agentique de prédiction d'activités biologiques des peptides
+# 🧬 DROID — Pipeline agentique de prédiction d'activités biologiques des peptides
 
 > **DROID** · *Deep learning for Residue Orchestration, Intelligence and Discovery*  
 > Pipeline 100 % local · ESM-2 650M + CNN + Monte Carlo Dropout · Interface Streamlit + Ollama
