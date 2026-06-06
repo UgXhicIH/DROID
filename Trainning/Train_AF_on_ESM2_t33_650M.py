@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Morgan Letoux. All rights reserved.
+# This file is part of PROTEOGEN/DROID.
+# Unauthorized use, reproduction or distribution is strictly prohibited.
+# See LICENSE for details.
 import os
 import gc
 import math
