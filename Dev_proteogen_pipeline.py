@@ -1,7 +1,3 @@
-# Copyright (c) 2026 Morgan Letoux. All rights reserved.
-# This file is part of PROTEOGEN/DROID.
-# Unauthorized use, reproduction or distribution is strictly prohibited.
-# See LICENSE for details.
 # proteogen_pipeline.py pour IA agentique, avec token_level
 
 import os
@@ -19,6 +15,8 @@ import threading
 import functools
 import urllib.request
 import urllib.error
+import json
+import html as _html
 
 # Global stop event — set via request_stop() to interrupt a running pipeline
 _stop_event = threading.Event()
@@ -72,13 +70,13 @@ from scipy.special import logit as scipy_logit, expit as sigmoid  # type: ignore
     # Les lignes commentées (#) correspondent aux modèles désactivés (non entraînés ou exclus)
 # ============================================================
 ALL_MODELS = [
-    {"nom_colonne": "Chimiotaxie",            "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/ChmxTaq_PROTEOGEN_token_model_1280D.keras"
-     ,"brier": 0.18348931312425373, "ece": 0.070895, "platt_a": 4.285494, "platt_b": -11.009266, "n_val": 912, 
+    {"nom_colonne": "Chimiotaxie",            "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/ChmxTaq_PROTEOGEN_token_model_1280D.keras",
+     "brier": 0.18348931312425373, "ece": 0.070895, "platt_a": 4.285494, "platt_b": -11.009266, "n_val": 912, 
      "ece_bins": [
         {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0615,"accuracy": 0.0147,"count": 68},
         {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1529,"accuracy": 0.0928,"count": 97},
         {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2482,"accuracy": 0.1918,"count": 73},
-        {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.3556,"accuracy": 0.3483,"count": 89      },
+        {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.3556,"accuracy": 0.3483,"count": 89},
         {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4534,"accuracy": 0.5109,"count": 92},
         {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.5532,"accuracy": 0.7,"count": 130},
         {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.6499,"accuracy": 0.708,"count": 137},
@@ -86,8 +84,8 @@ ALL_MODELS = [
         {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8365,"accuracy": 0.6909,"count": 55},
         {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9539,"accuracy": 0.8824,"count": 51}
     ]},
-    {"nom_colonne": "Cytokine",               "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/Cytokine_PROTEOGEN_token_model_1280D.keras"
-     ,"brier": 0.06620109880006493, "ece": 0.045403, "platt_a": 3.619203, "platt_b": -8.189797, "n_val": 4876, 
+    {"nom_colonne": "Cytokine",               "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/Cytokine_PROTEOGEN_token_model_1280D.keras",
+     "brier": 0.06620109880006493, "ece": 0.045403, "platt_a": 3.619203, "platt_b": -8.189797, "n_val": 4876, 
      "ece_bins": [
         {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0105,"accuracy": 0.0356,"count": 1883},
         {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1484,"accuracy": 0.0968,"count": 93},
@@ -100,8 +98,8 @@ ALL_MODELS = [
         {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8587,"accuracy": 0.8786,"count": 692},
         {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9477,"accuracy": 0.9812,"count": 1487}
     ]},
-    {"nom_colonne": "Pénétration_cellulaire", "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/CPP_PROTEOGEN_token_model_1280D.keras"
-     ,"brier": 0.11426204082920248, "ece": 0.028418, "platt_a": 2.234238, "platt_b": 1.086905, "n_val": 2460, 
+    {"nom_colonne": "Pénétration_cellulaire", "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/CPP_PROTEOGEN_token_model_1280D.keras",
+     "brier": 0.11426204082920248, "ece": 0.028418, "platt_a": 2.234238, "platt_b": 1.086905, "n_val": 2460, 
      "ece_bins": [
         {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0451,"accuracy": 0.0336,"count": 655},
         {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.146,"accuracy": 0.1845,"count": 206},
@@ -114,8 +112,8 @@ ALL_MODELS = [
         {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.853,"accuracy": 0.8672,"count": 271},
         {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9599,"accuracy": 0.9662,"count": 562}
     ]},
-    {"nom_colonne": "Drug_Delivery",          "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/DrugDelivery_PROTEOGEN_token_model_1280D.keras"
-     ,"brier": 0.08275502125231138, "ece": 0.009157, "platt_a": 2.402311, "platt_b": 3.128962, "n_val": 2624, 
+    {"nom_colonne": "Drug_Delivery",          "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/DrugDelivery_PROTEOGEN_token_model_1280D.keras",
+     "brier": 0.08275502125231138, "ece": 0.009157, "platt_a": 2.402311, "platt_b": 3.128962, "n_val": 2624, 
      "ece_bins": [
         {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0346,"accuracy": 0.0343,"count": 817},
         {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1452,"accuracy": 0.1531,"count": 196},
@@ -128,8 +126,8 @@ ALL_MODELS = [
         {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8526,"accuracy": 0.8235,"count": 153},
         {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9772,"accuracy": 0.9796,"count": 883}
     ]},
-    {"nom_colonne": "Régulation_Hormonale",   "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/Hormone_PROTEOGEN_token_model_1280D.keras'"
-     ,"brier": 0.07068438288688891, "ece": 0.010352, "platt_a": 4.819943, "platt_b": 3.316501, "n_val": 4876, 
+    {"nom_colonne": "Régulation_Hormonale",   "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/Hormone_PROTEOGEN_token_model_1280D.keras",
+     "brier": 0.07068438288688891, "ece": 0.010352, "platt_a": 4.819943, "platt_b": 3.316501, "n_val": 4876, 
      "ece_bins": [
         {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0171,"accuracy": 0.0154,"count": 1749},
         {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1479,"accuracy": 0.1339,"count": 239},
@@ -142,7 +140,34 @@ ALL_MODELS = [
         {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8538,"accuracy": 0.8747,"count": 391},
         {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9761,"accuracy": 0.97,"count": 1532}
     ]},
-
+    {"nom_colonne": "Potentialisateur",   "model": "Model_PROTEOGEN_V3_OK/Potentiator_PROTEOGEN_token_DoRA_CNN_model.keras",
+     "brier": 0.13433599245121514, "ece": 0.042651, "platt_a": 11.285076, "platt_b": 4.764228, "n_val": 431, 
+     "ece_bins": [
+        {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.039 ,"accuracy": 0.0235,"count": 85},
+        {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1502,"accuracy": 0.1935,"count": 31},
+        {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2505,"accuracy": 0.25  ,"count": 32},
+        {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.352 ,"accuracy": 0.4412,"count": 34},
+        {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4527,"accuracy": 0.5294,"count": 17},
+        {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.5579,"accuracy": 0.4857,"count": 35},
+        {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.6575,"accuracy": 0.5357,"count": 28},
+        {"bin_start": 0.7,"bin_end": 0.8,"confidence": 0.7499,"accuracy": 0.7273,"count": 33},
+        {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8557,"accuracy": 0.9151,"count": 59},
+        {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9503,"accuracy": 0.9351,"count": 77}
+    ]},
+    {"nom_colonne": "Stimulation_enzymatique",   "model": "Model_PROTEOGEN_V3_OK/Potentiator_PROTEOGEN_token_DoRA_CNN_model.keras",
+     "brier": 0.13177160222070358, "ece": 0.071827, "platt_a": 2.874647, "platt_b": -3.116224, "n_val": 2402, 
+     "ece_bins": [
+        {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0271,"accuracy": 0.0734,"count": 463},
+        {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1481,"accuracy": 0.2419,"count": 186},
+        {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2468,"accuracy": 0.2688,"count": 186},
+        {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.3506,"accuracy": 0.2395,"count": 167},
+        {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4546,"accuracy": 0.2612,"count": 134},
+        {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.5516,"accuracy": 0.3602,"count": 161},
+        {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.655 ,"accuracy": 0.5793,"count": 145},
+        {"bin_start": 0.7,"bin_end": 0.8,"confidence": 0.752 ,"accuracy": 0.7549,"count": 204},
+        {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8572,"accuracy": 0.9329,"count": 343},
+        {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.933 ,"accuracy": 0.9734,"count": 413}
+    ]},
     {"nom_colonne": "Activité_Hémolytique",   "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/AcHemo_PROTEOGEN_token_model_1280D.keras"
      ,"brier": 0.13238538446300185, "ece": 0.029125, "platt_a": 2.627478, "platt_b": -0.233982, "n_val": 3210, 
      "ece_bins": [
@@ -199,6 +224,20 @@ ALL_MODELS = [
         {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8551,"accuracy": 0.7882,"count": 203},
         {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9797,"accuracy": 0.9572,"count": 1308}
     ]},
+    {"nom_colonne": "Anti_Toxine",            "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/Anti_Toxin_PROTEOGEN_token_DORA_CNN_model.keras",
+     'brier': 0.13607491674807587, "ece": 0.028244, "platt_a": 4.761979, "platt_b": -5.257137, "n_val": 246,
+     "ece_bins": [
+        {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0415,"accuracy": 0.0208,"count": 48},
+        {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1519,"accuracy": 0.0714,"count": 14},
+        {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2579,"accuracy": 0.2778,"count": 18},
+        {"bin_start": 0.3,"bin_end": 0.4,"confidence":   0.36,"accuracy": 0.4615,"count": 13},
+        {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4527,"accuracy": 0.4583,"count": 24},
+        {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.5497,"accuracy":    0.6,"count": 20},
+        {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.6554,"accuracy": 0.6667,"count": 21},
+        {"bin_start": 0.7,"bin_end": 0.8,"confidence": 0.7484,"accuracy": 0.7333,"count": 15},
+        {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8477,"accuracy": 0.8621,"count": 29},
+        {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9576,"accuracy": 0.9318,"count": 44}
+    ]},
     {"nom_colonne": "Allergène",              "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/Allergen_PROTEOGEN_token_model_1280D.keras"
      ,"brier": 0.08057520755009741, "ece": 0.027906, "platt_a": 3.34204, "platt_b": 3.732625, "n_val": 3639, 
      "ece_bins": [
@@ -244,30 +283,30 @@ ALL_MODELS = [
     {"nom_colonne": "Anti_Bacterien",         "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/AB_PROTEOGEN_token_model_1280D.keras"
      ,"brier": 0.06667045243637942, "ece": 0.040717, "platt_a": 4.398331, "platt_b": -2.226266, "n_val": 1600, 
      "ece_bins": [
-      {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0312,"accuracy": 0.0613,"count": 571},
-      {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1446,"accuracy": 0.1038,"count": 106},
-      {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2439,"accuracy": 0.1667,"count": 54},
-      {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.348,"accuracy": 0.18,"count": 50},
-      {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4507,"accuracy": 0.3667,"count": 30},
-      {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.5455,"accuracy": 0.3864,"count": 44},
-      {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.6524,"accuracy": 0.5088,"count": 57},
-      {"bin_start": 0.7,"bin_end": 0.8,"confidence": 0.7455,"accuracy": 0.8163,"count": 49},
-      {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8577,"accuracy": 0.9818,"count": 55},
-      {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9878,"accuracy": 1.0,"count": 584}
+        {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0312,"accuracy": 0.0613,"count": 571},
+        {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1446,"accuracy": 0.1038,"count": 106},
+        {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2439,"accuracy": 0.1667,"count": 54},
+        {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.348,"accuracy": 0.18,"count": 50},
+        {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4507,"accuracy": 0.3667,"count": 30},
+        {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.5455,"accuracy": 0.3864,"count": 44},
+        {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.6524,"accuracy": 0.5088,"count": 57},
+        {"bin_start": 0.7,"bin_end": 0.8,"confidence": 0.7455,"accuracy": 0.8163,"count": 49},
+        {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8577,"accuracy": 0.9818,"count": 55},
+        {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9878,"accuracy": 1.0,"count": 584}
     ]},
     {"nom_colonne": "Anti_Fongique",          "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/AF_PROTEOGEN_token_model_1280D.keras"
      ,"brier": 0.16680802236032288, "ece": 0.044228, "platt_a": 3.768273, "platt_b": 6.578118, "n_val": 2336, 
      "ece_bins": [
-      {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0492,"accuracy": 0.0366,"count": 191},
-      {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1514,"accuracy": 0.081,"count": 210},
-      {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2537,"accuracy": 0.1833,"count": 251},
-      {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.3532,"accuracy": 0.3834,"count": 253},
-      {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4499,"accuracy": 0.4933,"count": 300},
-      {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.549,"accuracy": 0.5535,"count": 271},
-      {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.6472,"accuracy": 0.7298,"count": 248},
-      {"bin_start": 0.7,"bin_end": 0.8,"confidence": 0.7471,"accuracy": 0.7778,"count": 198},
-      {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8479,"accuracy": 0.8679,"count": 159},
-      {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9678,"accuracy": 0.902,"count": 255}
+        {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0492,"accuracy": 0.0366,"count": 191},
+        {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1514,"accuracy": 0.081,"count": 210},
+        {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2537,"accuracy": 0.1833,"count": 251},
+        {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.3532,"accuracy": 0.3834,"count": 253},
+        {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4499,"accuracy": 0.4933,"count": 300},
+        {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.549,"accuracy": 0.5535,"count": 271},
+        {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.6472,"accuracy": 0.7298,"count": 248},
+        {"bin_start": 0.7,"bin_end": 0.8,"confidence": 0.7471,"accuracy": 0.7778,"count": 198},
+        {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8479,"accuracy": 0.8679,"count": 159},
+        {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9678,"accuracy": 0.902,"count": 255}
     ]},
     {"nom_colonne": "Anti_Parasitique",       "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/AntiParasitic_PROTEOGEN_token_model_1280D.keras"
      ,"brier": 0.04695467524792357, "ece": 0.018611, "platt_a": 1.927235, "platt_b": -0.298947, "n_val": 4858, 
@@ -397,7 +436,7 @@ ALL_MODELS = [
     ]},
     {"nom_colonne": "Anti_Cancer",            "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/AntiCancer_PROTEOGEN_token_model_1280D.keras"
      ,"brier": 0.10470496065855767, "ece": 0.048684, "platt_a": 1.386577, "platt_b": 0.283643, "n_val": 4824, 
-     "ece_bins":  [
+     "ece_bins": [
         {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0474,"accuracy": 0.0599,"count": 1352},
         {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1422,"accuracy": 0.215,"count": 414},
         {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2503,"accuracy": 0.2946,"count": 224},
@@ -451,21 +490,50 @@ ALL_MODELS = [
         {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8464,"accuracy": 1.0,"count": 6},
         {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9816,"accuracy": 0.9817,"count": 109}
     ]},
+    {"nom_colonne": "Anti_Diabétique",          "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/Anti_Diabetic_PROTEOGEN_token_DoRA_CNN_model",
+     'brier': 0.17144489045298766, "ece": 0.035104, "platt_a": 2.15849, "platt_b": 3.138361, "n_val": 2858,
+     "ece_bins": [
+        {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0468,"accuracy": 0.0292,"count": 343},
+        {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1526,"accuracy": 0.0977,"count": 215},
+        {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2505,"accuracy": 0.2289,"count": 284},
+        {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.3502,"accuracy": 0.3793,"count": 274},
+        {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4471,"accuracy": 0.5481,"count": 208},
+        {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.5508,"accuracy": 0.5963,"count": 218},
+        {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.6544,"accuracy": 0.6415,"count": 265},
+        {"bin_start": 0.7,"bin_end": 0.8,"confidence": 0.7556,"accuracy": 0.7495,"count": 487},
+        {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.84  ,"accuracy": 0.8033,"count": 539},
+        {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.912 ,"accuracy": 1.0   ,"count": 25}
+    ]},
+    {"nom_colonne": "Inhibition_Coagulation",          "model": "Model_PROTEOGEN_V3_OK/Coag_Inhibitor_PROTEOGEN_token_DoRA_CNN_model.keras",
+     'brier': 0.10571146423768557, "ece": 0.031282, "platt_a": 4.9475, "platt_b": 2.179472, "n_val": 4256,
+     "ece_bins": [
+        {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0146,"accuracy": 0.0337,"count": 1187},
+        {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1463,"accuracy": 0.1146,"count": 157},
+        {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2463,"accuracy": 0.2202,"count": 168},
+        {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.35  ,"accuracy": 0.2649,"count": 151},
+        {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4529,"accuracy": 0.3466,"count": 176},
+        {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.5506,"accuracy": 0.4571,"count": 175},
+        {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.6527,"accuracy": 0.6141,"count": 241},
+        {"bin_start": 0.7,"bin_end": 0.8,"confidence": 0.7549,"accuracy": 0.8026,"count": 461},
+        {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8552,"accuracy": 0.8784 ,"count": 732},
+        {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.937 ,"accuracy": 0.9431,"count": 808}
+    ]},
     {"nom_colonne": "Umami",          "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/Umami_PROTEOGEN_token_model_1280D.keras",
      'brier': 0.10534684918818943, "ece": 0.022235, "platt_a": 5.854702, "platt_b": 0.578756, "n_val": 598,
      "ece_bins": [
-      {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.033,"accuracy": 0.0303,"count": 165},
-      {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1417,"accuracy": 0.1296,"count": 54},
-      {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2556,"accuracy": 0.1111,"count": 18},
-      {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.3455,"accuracy": 0.3793,"count": 29},
-      {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4513,"accuracy": 0.4286,"count": 21},
-      {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.5514,"accuracy": 0.65,"count": 20},
-      {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.6608,"accuracy": 0.7576,"count": 33},
-      {"bin_start": 0.7,"bin_end": 0.8,"confidence": 0.756,"accuracy": 0.7333,"count": 30},
-      {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8542,"accuracy": 0.871,"count": 93},
-      {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9396,"accuracy": 0.9185,"count": 135}
-    ]}
+        {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.033,"accuracy": 0.0303,"count": 165},
+        {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1417,"accuracy": 0.1296,"count": 54},
+        {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2556,"accuracy": 0.1111,"count": 18},
+        {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.3455,"accuracy": 0.3793,"count": 29},
+        {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4513,"accuracy": 0.4286,"count": 21},
+        {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.5514,"accuracy": 0.65,"count": 20},
+        {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.6608,"accuracy": 0.7576,"count": 33},
+        {"bin_start": 0.7,"bin_end": 0.8,"confidence": 0.756,"accuracy": 0.7333,"count": 30},
+        {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8542,"accuracy": 0.871,"count": 93},
+        {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9396,"accuracy": 0.9185,"count": 135}
+    ]},
 ]
+
 AVAILABLE_ACTIVITIES = [m["nom_colonne"] for m in ALL_MODELS]
 ALL_MODULES = [
     "Prédictions DL (ESM-2 + CNN + MC Dropout)  — toujours actif",
@@ -842,6 +910,122 @@ function setupActivityFilters() {
   });
 }
 """
+_RADAR_GLYPH = (
+    '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">'
+    '<polygon points="12,3 20,9 17,19 7,19 4,9" fill="none" stroke="currentColor" stroke-width="1.4"/>'
+    '<polygon points="12,7.5 16.5,10.8 15,16 9,16 7.5,10.8" fill="none" stroke="currentColor" stroke-width="1" opacity="0.6"/>'
+    '<line x1="12" y1="12" x2="12" y2="3" stroke="currentColor" stroke-width="0.9" opacity="0.5"/>'
+    '<line x1="12" y1="12" x2="20" y2="9" stroke="currentColor" stroke-width="0.9" opacity="0.5"/>'
+    '<line x1="12" y1="12" x2="4" y2="9" stroke="currentColor" stroke-width="0.9" opacity="0.5"/>'
+    '<circle cx="12" cy="12" r="1.3" fill="currentColor"/></svg>'
+)
+_RADAR_CSS = r"""
+.pep-cell{ displau:flex; align-item:center; gap:8px; }
+.pep-name{ font-variant-ligature:none; }
+.radar-btn{
+    flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center;
+  width:24px; height:24px; padding:0; border:1px solid var(--ink-faint,#8a8a8a);
+  border-radius:6px; background:transparent; color:var(--ink-soft,#555);
+  cursor:pointer; line-height:0; transition:all .12s ease;
+}
+.radar-btn:hover{ color:var(--accent,#B0473F); border-color:var(--accent,#B0473F);
+  background:rgba(176,71,63,.06); }
+.radar-btn:focus-visible{ outline:2px solid var(--accent,#B0473F); outline-offset:1px; }
+.radar-modal{
+  position:fixed; inset:0; z-index:9999; display:none;
+  align-items:center; justify-content:center;
+  background:rgba(26,26,26,.55); padding:24px;
+}
+.radar-modal.open{ display:flex; }
+.radar-modal-card{
+  background:var(--paper,#fdfcfa); color:var(--ink,#1a1a1a);
+  border:1px solid var(--ink-faint,#8a8a8a); border-radius:14px;
+  box-shadow:0 18px 50px rgba(0,0,0,.28); width:min(520px,94vw);
+  max-height:92vh; overflow:auto; padding:18px 20px 14px;
+}
+.radar-modal-head{ display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+.radar-modal-kicker{ font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--ink-faint,#8a8a8a); }
+.radar-title{ font-weight:700; font-size:16px; color:var(--accent,#B0473F);
+  margin-right:auto; word-break:break-all; }
+.radar-close{ flex:0 0 auto; width:30px; height:30px; border:none; border-radius:8px;
+  background:transparent; color:var(--ink-soft,#555); font-size:22px; line-height:1; cursor:pointer; }
+.radar-close:hover{ background:rgba(0,0,0,.06); color:var(--ink,#1a1a1a); }
+.radar-canvas{ display:flex; justify-content:center; }
+.radar-svg{ width:100%; max-width:460px; height:auto; }
+.radar-grid{ fill:none; stroke:var(--ink-faint,#8a8a8a); stroke-opacity:.35; stroke-width:1; }
+.radar-axis{ stroke:var(--ink-faint,#8a8a8a); stroke-opacity:.4; stroke-width:1; }
+.radar-label{ font-size:10px; fill:var(--ink-soft,#555); font-family:inherit; }
+.radar-area{ fill:rgba(176,71,63,.18); stroke:var(--accent,#B0473F); stroke-width:1.8; stroke-linejoin:round; }
+.radar-dot{ fill:var(--accent,#B0473F); }
+.radar-dot.hi{ fill:#fff; stroke:var(--accent,#B0473F); stroke-width:2; }
+.radar-foot{ margin-top:8px; font-size:11px; color:var(--ink-faint,#8a8a8a); text-align:center; }
+"""
+_RADAR_MODAL = r"""
+<div id="radarModal" class="radar-modal" role="dialog" aria-modal="true" aria-label="Radar multi-activités">
+  <div class="radar-modal-card">
+    <div class="radar-modal-head">
+      <span class="radar-modal-kicker">Profil multi-activités</span>
+      <span class="radar-title"></span>
+      <button type="button" class="radar-close" aria-label="Fermer">&times;</button>
+    </div>
+    <div class="radar-canvas"></div>
+    <div class="radar-foot">Rayon = probabilité calibrée (centre 0 → bord 1). Points pleins = score ≥ 0.90.</div>
+  </div>
+</div>
+"""
+
+_RADAR_JS = r"""
+function _radarEsc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _radarBuildSVG(labels, values, unc){
+  var N = labels.length, size = 460, cx = size/2, cy = size/2, R = 165, rings = 4;
+  function pt(i, r){ var a = -Math.PI/2 + i*2*Math.PI/N; return [cx + r*Math.cos(a), cy + r*Math.sin(a)]; }
+  var parts = ['<svg viewBox="0 0 '+size+' '+size+'" xmlns="http://www.w3.org/2000/svg" class="radar-svg">'];
+  for (var k=1; k<=rings; k++){
+    var rr = R*k/rings, poly = [];
+    for (var i=0;i<N;i++){ var p=pt(i,rr); poly.push(p[0].toFixed(1)+','+p[1].toFixed(1)); }
+    parts.push('<polygon class="radar-grid" points="'+poly.join(' ')+'"/>');
+  }
+  for (var i=0;i<N;i++){
+    var pe = pt(i, R);
+    parts.push('<line class="radar-axis" x1="'+cx+'" y1="'+cy+'" x2="'+pe[0].toFixed(1)+'" y2="'+pe[1].toFixed(1)+'"/>');
+    var pl = pt(i, R+18), anchor = (Math.abs(pl[0]-cx) < 6) ? 'middle' : (pl[0] > cx ? 'start' : 'end');
+    parts.push('<text class="radar-label" x="'+pl[0].toFixed(1)+'" y="'+pl[1].toFixed(1)+'" text-anchor="'+anchor+'">'+_radarEsc(labels[i])+'</text>');
+  }
+  var vpoly = [], dots = [];
+  for (var i=0;i<N;i++){
+    var raw = values[i], v = (raw==null || isNaN(raw)) ? 0 : Math.max(0, Math.min(1, raw));
+    var p = pt(i, R*v); vpoly.push(p[0].toFixed(1)+','+p[1].toFixed(1));
+    var hi = (raw!=null) && (raw >= 0.90);
+    var u = (unc && unc[i]!=null) ? ' \u00b1'+Number(unc[i]).toFixed(3) : '';
+    var lbl = _radarEsc(labels[i])+' : '+(raw==null?'N/A':Number(raw).toFixed(3))+u;
+    dots.push('<circle class="radar-dot'+(hi?' hi':'')+'" cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="'+(hi?4:3)+'"><title>'+lbl+'</title></circle>');
+  }
+  parts.push('<polygon class="radar-area" points="'+vpoly.join(' ')+'"/>');
+  parts.push(dots.join(''));
+  parts.push('</svg>');
+  return parts.join('');
+}
+function _radarOpen(btn){
+  var values = JSON.parse(btn.getAttribute('data-v') || '[]');
+  var unc = JSON.parse(btn.getAttribute('data-u') || '[]');
+  var pep = btn.getAttribute('data-p') || '';
+  var modal = document.getElementById('radarModal');
+  if (!modal) return;
+  modal.querySelector('.radar-title').textContent = pep;
+  modal.querySelector('.radar-canvas').innerHTML = _radarBuildSVG(RADAR_LABELS, values, unc);
+  modal.classList.add('open');
+}
+function _radarClose(){ var m = document.getElementById('radarModal'); if (m) m.classList.remove('open'); }
+function setupRadar(){
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest ? e.target.closest('.radar-btn') : null;
+    if (btn){ e.preventDefault(); _radarOpen(btn); return; }
+    if (e.target.matches && (e.target.matches('.radar-modal') || e.target.matches('.radar-close'))) _radarClose();
+  });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') _radarClose(); });
+}
+"""
 
 def _generate_client_dashboard(df_global, model_a_tester, output_dir, graphs_id, date_run):
     """
@@ -849,6 +1033,8 @@ def _generate_client_dashboard(df_global, model_a_tester, output_dir, graphs_id,
     (DataTables CDN), barres proba colorées ± incertitude, badge confiance
     MC Dropout (vert/orange/rouge). Aucune dépendance serveur.
     """
+    import json
+    import html as _html
     activities = [m["nom_colonne"] for m in model_a_tester]
     prob_cols  = [f"Peptide_{a}" for a in activities]
     keep = [(a, pc, f"Incertitude_{a}") for a, pc in zip(activities, prob_cols) if pc in df_global.columns]
@@ -863,6 +1049,7 @@ def _generate_client_dashboard(df_global, model_a_tester, output_dir, graphs_id,
     n_pep    = len(df_global)
     n_act    = len(activities)
     n_sheets = len(sheets)
+    radar_labels_json = json.dumps(activities, ensure_ascii=False)
     def _badge(unc):
         if pd.isna(unc):
             return ("●", "#9ca3af", "indéterminée")
@@ -894,7 +1081,21 @@ def _generate_client_dashboard(df_global, model_a_tester, output_dir, graphs_id,
         df_s = df_global[df_global["Sheet"] == s]
         rows_html = []
         for _, row in df_s.iterrows():
-            cells = [f'<td>{row.get("Peptide", "")}</td>']
+            pep = str(row.get("Peptide", ""))
+            _rv = []
+            for _pc in prob_cols:
+                _v = row.get(_pc, np.nan)
+                _rv.append(None if pd.isna(_v) else round(float(_v), 5))
+            _ru = []
+            for _uc in unc_cols:
+                _v = row.get(_uc, np.nan) if _uc in df_s.columns else np.nan
+                _ru.append(None if pd.isna(_v) else round(float(_v), 5))
+            _radar_btn = (
+                f'<button type="button" class="radar-btn" title="Profil radar multi-activités" '
+                f'aria-label="Radar {_html.escape(pep)}" data-p="{_html.escape(pep)}" '
+                f"data-v='{json.dumps(_rv)}' data-u='{json.dumps(_ru)}'>{_RADAR_GLYPH}</button>"
+            )
+            cells = [f'<td><span class="pep-cell">{_radar_btn}<span class="pep-name">{_html.escape(pep)}</span></span></td>']
             if has_accession:
                 cells.append(f'<td>{row.get("Accession", "")}</td>')
             for pc, uc in zip(prob_cols, unc_cols):
@@ -1273,6 +1474,7 @@ table.dataTable tbody tr:hover td{{
   .toolbar{{ display:none; }}
   .sheet{{ box-shadow:none; }}
 }}
+{_RADAR_CSS}
 </style>
 </head>
 <body>
@@ -1308,6 +1510,7 @@ table.dataTable tbody tr:hover td{{
     </div>
     <div class="tabs">{tabs_buttons}</div>
     {"".join(sheet_tables_html)}
+    {_RADAR_MODAL}
     <footer class="fig-footer">
       <span>DROID Team · Peptidomique · sortie pipeline ARDF</span>
       <span class="filename">{dashboard_fname}</span>
@@ -1315,6 +1518,7 @@ table.dataTable tbody tr:hover td{{
   </div>
 </div>
 <script>
+var RADAR_LABELS = {radar_labels_json};
 document.querySelectorAll('.tab-btn').forEach(btn => {{
   btn.addEventListener('click', () => {{
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -1325,9 +1529,11 @@ document.querySelectorAll('.tab-btn').forEach(btn => {{
 }});
 {first_tab_js}
 {_DASHBOARD_FILTER_JS}
+{_RADAR_JS}
 $(document).ready(function() {{
       {dt_init_js}
       setupActivityFilters();
+      setupRadar();
 }});
 </script>
 </body>
@@ -1890,12 +2096,12 @@ def run_proteogen_pipeline(
                         raw_probas = np.array(predicted_class)
                         calibrated_probas = apply_platt(raw_probas, pa, pb)
                         logging.info("Platt scaling appliqué aux probabilités MC Dropout")
-                        nom_col_raw = f"Peptide_{nom}"
-                        dataset.loc[valid_indices, nom_col_raw] = predicted_class
+                        nom_col_cal = f"Peptide_{nom}"
+                        dataset.loc[valid_indices, nom_col_cal] = calibrated_probas
                         predicted_class = [round(float(p), 5) for p in calibrated_probas]
                     nom_col_uncert  = f"Incertitude_{nom}"
                     dataset.loc[valid_indices, nom_col_uncert] = uncertainty_class
-                    logging.info(f"Colonne '{nom_col_raw}' ajoutée")
+                    logging.info(f"Colonne '{nom_col_cal}' ajoutée")
                     logging.info("Prédictions terminées")
                     # ── Gestion mémoire — NE PAS MODIFIER ────────────────────
                     try:
@@ -2374,8 +2580,14 @@ def run_proteogen_pipeline(
     for search_dir in [DIR_GRAPHS, DIR_CLUSTER]:
         if os.path.isdir(search_dir):
             for fname in sorted(os.listdir(search_dir)):
-                if fname.endswith(".html"):
-                    html_files_generated.append(os.path.join(search_dir, fname))
+                if not fname.endswith(".html"):
+                    continue
+                fpath = os.path.join(search_dir, fname)
+                # Run actuel uniquement : on ne garde que les HTML (ré)écrits depuis
+                # le début du run. Évite de ramasser les graphiques des runs
+                # précédents encore présents dans DIR_GRAPHS / DIR_CLUSTER.
+                if os.path.getmtime(fpath) >= start_time:
+                    html_files_generated.append(fpath)
     # ── Dashboard client HTML interactif ──────────────────────────────────────
     dashboard_html = None
     try:
@@ -2387,7 +2599,9 @@ def run_proteogen_pipeline(
                 graphs_id=graphs_id,
                 date_run=date_run,
             )
-            html_files_generated.append(dashboard_html)
+            # NB : pas d'ajout à html_files_generated — le dashboard (souvent
+            # >200 Mo) est exposé séparément via la clé 'dashboard_html' et ne doit
+            # PAS être ré-embarqué dans les onglets (limite websocket Streamlit).
             logging.info(f"Dashboard client généré : {dashboard_html}")
         else:
             logging.warning("Dashboard client ignoré : df_global vide")

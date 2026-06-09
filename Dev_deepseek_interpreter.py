@@ -1,7 +1,3 @@
-# Copyright (c) 2026 Morgan Letoux. All rights reserved.
-# This file is part of PROTEOGEN/DROID.
-# Unauthorized use, reproduction or distribution is strictly prohibited.
-# See LICENSE for details.
 """
 PROTEOGEN — Module interpréteur DeepSeek
 Explique résultats post-pipeline (clusters principalement).
