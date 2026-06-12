@@ -158,7 +158,8 @@ class PipelineLogFilter(logging.Filter):
 # ============================================================
 THREAD_STATE = {
     "file_path": None,
-    "pipeline_result": None
+    "pipeline_result": None,
+    "warnings": [],
 }
 @tool
 def lancer_pipeline_proteogen(
@@ -168,6 +169,7 @@ def lancer_pipeline_proteogen(
     run_signalp: Optional[list] = None,
     run_xai: bool = False,
     run_esmfold: bool = False,
+    esmfold_list: list[str] = [],
     esmfold_activities: Optional[list] = None,
     esmfold_threshold: float = 0.95,
     esmfold_top_n: int = 30,
@@ -187,7 +189,7 @@ def lancer_pipeline_proteogen(
             Anti_Tumeur, Anti_Oxydant, Opioïde, Umami.
 
         run_smiles: True si l'utilisateur souhaite générer les colonnes SMILES (RDKit).
-        run_clustering: True si l'utilisateur mentionne clustering, UMAP, t-SNE.
+        run_clustering: True si l'utilisateur mentionne clustering, UMAP, t-SNE, false par défaut.
         run_signalp: Liste d'activités pour l'extraction FASTA + SignalP 6.0. [] ou None = ignoré.
         run_xai: True pour l'analyse XAI (Alanine Scanning top 10). False par défaut.
         run_esmfold: True pour prédiction structure 3D ESM-Fold. False par défaut (nécessite GPU).
@@ -204,14 +206,15 @@ def lancer_pipeline_proteogen(
     if not os.path.exists(input_file):
         return "Erreur : le fichier temporaire a expiré. Veuillez uploader à nouveau le fichier Excel."
 
-    activities     = [a for a in (target_activities or []) if a in pipeline.AVAILABLE_ACTIVITIES]
-    signalp_list   = [a for a in (run_signalp or [])       if a in pipeline.AVAILABLE_ACTIVITIES]
-    esmfold_list   = [a for a in (esmfold_activities or []) if a in pipeline.AVAILABLE_ACTIVITIES]
+    activities      = [a for a in (target_activities or [])  if a in pipeline.AVAILABLE_ACTIVITIES]
+    signalp_list    = [a for a in (run_signalp or [])        if a in pipeline.AVAILABLE_ACTIVITIES]
+    esmfold_list    = [a for a in (esmfold_activities or []) if a in pipeline.AVAILABLE_ACTIVITIES]
     invalid_acts    = [a for a in (target_activities or [])  if a not in pipeline.AVAILABLE_ACTIVITIES]
     invalid_signalp = [a for a in (run_signalp or [])        if a not in pipeline.AVAILABLE_ACTIVITIES]
     invalid_esmfold = [a for a in (esmfold_activities or []) if a not in pipeline.AVAILABLE_ACTIVITIES]
     if invalid_acts or invalid_signalp or invalid_esmfold:
         ignored = invalid_acts + invalid_signalp + invalid_esmfold
+        THREAD_STATE["warnings"].append(f"Activités inconnues ignorées : {ignored}")
         THREAD_STATE.setdefault("warnings", []).append(f"Activités inconnues ignorées : {ignored}")
 
     try:
@@ -628,10 +631,11 @@ def display_pipeline_results(result: dict):
 
     if has_dashboard:
         with cols[2]:
-            dash_bytes = os.path.getsize(dashboard_path)
-            if dash_bytes <= MAX_WS_BYTES:
-                with open(dashboard_path, "rb") as f:
-                    st.download_button(
+            if dashboard_path:
+                dash_bytes = os.path.getsize(dashboard_path)
+                if dash_bytes <= MAX_WS_BYTES:
+                    with open(dashboard_path, "rb") as f:
+                        st.download_button(
                         label="🧬 Télécharger le dashboard HTML",
                         data=f,
                         file_name=os.path.basename(dashboard_path),
@@ -639,11 +643,11 @@ def display_pipeline_results(result: dict):
                         use_container_width=True,
                         help="Ouvrir dans un navigateur pour visualisation plein écran (tableau filtrable par activité bio).",
                     )
-            else:
-                st.warning(
-                    f"Dashboard {dash_bytes / 1_000_000:.0f} Mo — trop volumineux pour le "
-                    f"navigateur (limite websocket {MAX_WS_BYTES // (1024 * 1024)} Mo)."
-                )
+                else:
+                    st.warning(
+                        f"Dashboard {dash_bytes / 1_000_000:.0f} Mo — trop volumineux pour le "
+                        f"navigateur (limite websocket {MAX_WS_BYTES // (1024 * 1024)} Mo)."
+                    )
                 st.code(os.path.abspath(dashboard_path), language=None)
                 if st.button("🧬 Ouvrir le dashboard dans le navigateur",
                              use_container_width=True, key="open_dashboard"):
