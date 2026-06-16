@@ -52,22 +52,6 @@ mc_passes = 40
 # Imports lourds (exécutés une seule fois au chargement du module)
 from keras.models import load_model  # type: ignore
 
-# ============================================================
-# CHARGEMENT RÉSILIENT DES MODÈLES .keras (compat. versions Keras)
-# ------------------------------------------------------------
-# Les modèles ont été sauvegardés avec Keras >= 3.4, qui écrit une clé
-# 'quantization_config' dans la config de chaque couche. Une version de
-# Keras plus ancienne sur la machine d'inférence rejette ce kwarg inconnu :
-#   ValueError: Unrecognized keyword arguments passed to Dense:
-#               {'quantization_config': None}
-# Solution sans ré-entraînement ni mise à jour d'environnement : on retire
-# récursivement les clés inconnues de config.json à l'intérieur de l'archive
-# .keras (un zip), puis on recharge. Comme 'quantization_config' vaut None
-# (aucune quantification appliquée), l'architecture et les poids sont
-# strictement préservés.
-# ============================================================
-# Clés introduites par des versions récentes de Keras et inconnues des
-# anciennes — étendre cette liste si d'autres kwargs posent problème.
 _KERAS_KEYS_INCONNUES = ("quantization_config",)
 
 def _strip_keys_inconnues(obj):
