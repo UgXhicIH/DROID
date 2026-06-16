@@ -228,7 +228,7 @@ Le Platt Scaling (`sigmoid(a·logit(p) + b)`) est appliqué aux probabilités MC
 
 ## Interpréteur DeepSeek — Analyse de clusters
 
-Après clustering, l'interpréteur LLM (`Dev_deepseek_interpreter.py`) permet d'analyser un cluster sélectionné via un modèle Qwen3-32B (Q5) chargé dynamiquement sur Ollama :
+Après clustering, l'interpréteur LLM (`Dev_deepseek_interpreter.py`) permet d'analyser un cluster sélectionné via un modèle Qwen3-32B (Q5) adapté pour l'interprétation de résultats en peptidomique chargé dynamiquement sur Ollama :
 
 - Composition du cluster (taille, profils, longueurs)
 - Activités biologiques sur-représentées

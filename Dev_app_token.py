@@ -1,7 +1,3 @@
-# Copyright (c) 2026 Morgan Letoux. All rights reserved.
-# This file is part of PROTEOGEN/DROID.
-# Unauthorized use, reproduction or distribution is strictly prohibited.
-# See LICENSE for details.
 """
 PROTEOGEN — Interface web agentique
 Streamlit + LangChain + Ollama (100 % local)
@@ -14,6 +10,7 @@ import tempfile
 import time
 import logging
 import threading
+import webbrowser
 from typing import Optional
 import streamlit as st #type: ignore
 import streamlit.components.v1 as components #type: ignore
@@ -161,7 +158,8 @@ class PipelineLogFilter(logging.Filter):
 # ============================================================
 THREAD_STATE = {
     "file_path": None,
-    "pipeline_result": None
+    "pipeline_result": None,
+    "warnings": [],
 }
 @tool
 def lancer_pipeline_proteogen(
@@ -171,6 +169,7 @@ def lancer_pipeline_proteogen(
     run_signalp: Optional[list] = None,
     run_xai: bool = False,
     run_esmfold: bool = False,
+    esmfold_list: list[str] = [],
     esmfold_activities: Optional[list] = None,
     esmfold_threshold: float = 0.95,
     esmfold_top_n: int = 30,
@@ -190,7 +189,7 @@ def lancer_pipeline_proteogen(
             Anti_Tumeur, Anti_Oxydant, Opioïde, Umami.
 
         run_smiles: True si l'utilisateur souhaite générer les colonnes SMILES (RDKit).
-        run_clustering: True si l'utilisateur mentionne clustering, UMAP, t-SNE.
+        run_clustering: True si l'utilisateur mentionne clustering, UMAP, t-SNE, false par défaut.
         run_signalp: Liste d'activités pour l'extraction FASTA + SignalP 6.0. [] ou None = ignoré.
         run_xai: True pour l'analyse XAI (Alanine Scanning top 10). False par défaut.
         run_esmfold: True pour prédiction structure 3D ESM-Fold. False par défaut (nécessite GPU).
@@ -207,14 +206,15 @@ def lancer_pipeline_proteogen(
     if not os.path.exists(input_file):
         return "Erreur : le fichier temporaire a expiré. Veuillez uploader à nouveau le fichier Excel."
 
-    activities     = [a for a in (target_activities or []) if a in pipeline.AVAILABLE_ACTIVITIES]
-    signalp_list   = [a for a in (run_signalp or [])       if a in pipeline.AVAILABLE_ACTIVITIES]
-    esmfold_list   = [a for a in (esmfold_activities or []) if a in pipeline.AVAILABLE_ACTIVITIES]
+    activities      = [a for a in (target_activities or [])  if a in pipeline.AVAILABLE_ACTIVITIES]
+    signalp_list    = [a for a in (run_signalp or [])        if a in pipeline.AVAILABLE_ACTIVITIES]
+    esmfold_list    = [a for a in (esmfold_activities or []) if a in pipeline.AVAILABLE_ACTIVITIES]
     invalid_acts    = [a for a in (target_activities or [])  if a not in pipeline.AVAILABLE_ACTIVITIES]
     invalid_signalp = [a for a in (run_signalp or [])        if a not in pipeline.AVAILABLE_ACTIVITIES]
     invalid_esmfold = [a for a in (esmfold_activities or []) if a not in pipeline.AVAILABLE_ACTIVITIES]
     if invalid_acts or invalid_signalp or invalid_esmfold:
         ignored = invalid_acts + invalid_signalp + invalid_esmfold
+        THREAD_STATE["warnings"].append(f"Activités inconnues ignorées : {ignored}")
         THREAD_STATE.setdefault("warnings", []).append(f"Activités inconnues ignorées : {ignored}")
 
     try:
@@ -522,7 +522,7 @@ Correspondances linguistiques et MACROS importantes :
 - "Anti-biofilm", "antibiofilm", "ABF" → Anti_Biofilm
 
 - "anti-hypertension", "antihypertension", "ACE", "AHT" → Anti_Hyper_Tension
-- "DPPIV, "DDPIV", "DPP-IV", "DPP4", "dipeptidyl peptidase IV" → Dipeptidyl_peptidase_IV
+- "DPPIV", "DDPIV", "DPP-IV", "DPP4", "dipeptidyl peptidase IV" → Dipeptidyl_peptidase_IV
 - "AIP", "anti-inflammatoire", "anti inflammatoire" → Anti_Inflammatoire
 - "anti-âge", "anti age", "anti-age", "antiaging", "anti-aging", "AA" → Anti_Age
 - "anti-amnésique", "anti amnésique", "anti-amnesique", "antiamnesique", "anti-amnesic", "AAm" → Anti_Amnésique
@@ -581,6 +581,21 @@ def get_llm_with_tools(model_name: str, base_url: str):
 # ============================================================
 # ZONE D'AFFICHAGE DES RÉSULTATS PIPELINE
 # ============================================================
+# Limite de taille d'un message websocket Streamlit (défaut serveur : 200 Mo).
+# Au-delà, on n'envoie pas le fichier au navigateur (téléchargement / aperçu
+# intégré) : on affiche son chemin local + un bouton d'ouverture directe.
+MAX_WS_BYTES = 150 * 1024 * 1024
+
+
+def _open_local_file(path: str) -> None:
+    """Ouvre un fichier local côté serveur (app 100 % locale)."""
+    abspath = os.path.abspath(path)
+    try:
+        os.startfile(abspath)  # Windows : ouvre avec l'application par défaut
+    except Exception:
+        webbrowser.open(f"file:///{abspath.replace(os.sep, '/')}")
+
+
 def display_pipeline_results(result: dict):
     """Affiche le fichier Excel téléchargeable et les graphiques HTML."""
     st.success("✅ Pipeline terminé !")
@@ -616,15 +631,27 @@ def display_pipeline_results(result: dict):
 
     if has_dashboard:
         with cols[2]:
-            with open(dashboard_path, "rb") as f:
-                st.download_button(
-                    label="🧬 Télécharger le dashboard HTML",
-                    data=f,
-                    file_name=os.path.basename(dashboard_path),
-                    mime="text/html",
-                    use_container_width=True,
-                    help="Ouvrir dans un navigateur pour visualisation plein écran (tableau filtrable par activité bio).",
-                )
+            if dashboard_path:
+                dash_bytes = os.path.getsize(dashboard_path)
+                if dash_bytes <= MAX_WS_BYTES:
+                    with open(dashboard_path, "rb") as f:
+                        st.download_button(
+                        label="🧬 Télécharger le dashboard HTML",
+                        data=f,
+                        file_name=os.path.basename(dashboard_path),
+                        mime="text/html",
+                        use_container_width=True,
+                        help="Ouvrir dans un navigateur pour visualisation plein écran (tableau filtrable par activité bio).",
+                    )
+                else:
+                    st.warning(
+                        f"Dashboard {dash_bytes / 1_000_000:.0f} Mo — trop volumineux pour le "
+                        f"navigateur (limite websocket {MAX_WS_BYTES // (1024 * 1024)} Mo)."
+                    )
+                st.code(os.path.abspath(dashboard_path), language=None)
+                if st.button("🧬 Ouvrir le dashboard dans le navigateur",
+                             use_container_width=True, key="open_dashboard"):
+                    _open_local_file(dashboard_path)
 
     # Visualisations interactives
     if result["html_files"]:
@@ -634,9 +661,20 @@ def display_pipeline_results(result: dict):
         for tab, html_path in zip(tabs, result["html_files"]):
             with tab:
                 try:
-                    with open(html_path, "r", encoding="utf-8") as f:
-                        html_content = f.read()
-                    components.html(html_content, height=520, scrolling=True)
+                    if os.path.getsize(html_path) > MAX_WS_BYTES:
+                        st.warning(
+                            f"Graphique {os.path.getsize(html_path) / 1_000_000:.0f} Mo — "
+                            f"trop volumineux pour l'aperçu intégré."
+                        )
+                        st.code(os.path.abspath(html_path), language=None)
+                        if st.button("Ouvrir dans le navigateur",
+                                     use_container_width=True,
+                                     key=f"open_{os.path.basename(html_path)}"):
+                            _open_local_file(html_path)
+                    else:
+                        with open(html_path, "r", encoding="utf-8") as f:
+                            html_content = f.read()
+                        components.html(html_content, height=520, scrolling=True)
                 except Exception as e:
                     st.error(f"Impossible d'afficher {os.path.basename(html_path)} : {e}")
     else:

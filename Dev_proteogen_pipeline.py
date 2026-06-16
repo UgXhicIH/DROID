@@ -1,7 +1,3 @@
-# Copyright (c) 2026 Morgan Letoux. All rights reserved.
-# This file is part of PROTEOGEN/DROID.
-# Unauthorized use, reproduction or distribution is strictly prohibited.
-# See LICENSE for details.
 # proteogen_pipeline.py pour IA agentique, avec token_level
 
 import os
@@ -22,6 +18,7 @@ import urllib.error
 import json
 import zipfile
 import tempfile
+import html as _html
 
 # Global stop event — set via request_stop() to interrupt a running pipeline
 _stop_event = threading.Event()
@@ -47,6 +44,9 @@ DIR_XLSX_Interest = "Output_Accession_Interest_XLSX_File_1280D"
 DIR_FASTA_Interest= "Output_Accession_Interest_FASTA_File_1280D"
 DIR_CLUSTER       = "Output_Cluster_1280D"
 DIR_SIGNALP       = "Output_SignalP_1280D"
+DIR_ESMFOLD       = "Output_ESMFold_1280D"
+DIR_DASHBOARD     = "Output_Dashboard_1280D"
+DIR_ESMFOLD       = "Output_ESMfold_1280D"
 # Nombre de passes MC Dropout — variable globale accessible par generate_XAI_model
 mc_passes = 40
 # Imports lourds (exécutés une seule fois au chargement du module)
@@ -115,9 +115,9 @@ def safe_load_model(model_path, **kwargs):
                     zout.writestr(item, data)
             return load_model(patched_path, **kwargs)
 
+from keras.models import load_model   # type: ignore
 import torch                          # type: ignore
 import esm                            # type: ignore
-#from esmfold_module import run_esmfold_module  # type: ignore
 import pandas as pd                   # type: ignore
 import numpy as np                    # type: ignore
 import peptides                       # type: ignore
@@ -139,13 +139,13 @@ from scipy.special import logit as scipy_logit, expit as sigmoid  # type: ignore
     # Les lignes commentées (#) correspondent aux modèles désactivés (non entraînés ou exclus)
 # ============================================================
 ALL_MODELS = [
-    {"nom_colonne": "Chimiotaxie",            "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/ChmxTaq_PROTEOGEN_token_model_1280D.keras"
-     ,"brier": 0.18348931312425373, "ece": 0.070895, "platt_a": 4.285494, "platt_b": -11.009266, "n_val": 912, 
+    {"nom_colonne": "Chimiotaxie",            "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/ChmxTaq_PROTEOGEN_token_model_1280D.keras",
+     "brier": 0.18348931312425373, "ece": 0.070895, "platt_a": 4.285494, "platt_b": -11.009266, "n_val": 912, 
      "ece_bins": [
         {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0615,"accuracy": 0.0147,"count": 68},
         {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1529,"accuracy": 0.0928,"count": 97},
         {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2482,"accuracy": 0.1918,"count": 73},
-        {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.3556,"accuracy": 0.3483,"count": 89      },
+        {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.3556,"accuracy": 0.3483,"count": 89},
         {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4534,"accuracy": 0.5109,"count": 92},
         {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.5532,"accuracy": 0.7,"count": 130},
         {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.6499,"accuracy": 0.708,"count": 137},
@@ -153,8 +153,8 @@ ALL_MODELS = [
         {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8365,"accuracy": 0.6909,"count": 55},
         {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9539,"accuracy": 0.8824,"count": 51}
     ]},
-    {"nom_colonne": "Cytokine",               "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/Cytokine_PROTEOGEN_token_model_1280D.keras"
-     ,"brier": 0.06620109880006493, "ece": 0.045403, "platt_a": 3.619203, "platt_b": -8.189797, "n_val": 4876, 
+    {"nom_colonne": "Cytokine",               "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/Cytokine_PROTEOGEN_token_model_1280D.keras",
+     "brier": 0.06620109880006493, "ece": 0.045403, "platt_a": 3.619203, "platt_b": -8.189797, "n_val": 4876, 
      "ece_bins": [
         {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0105,"accuracy": 0.0356,"count": 1883},
         {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1484,"accuracy": 0.0968,"count": 93},
@@ -167,8 +167,8 @@ ALL_MODELS = [
         {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8587,"accuracy": 0.8786,"count": 692},
         {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9477,"accuracy": 0.9812,"count": 1487}
     ]},
-    {"nom_colonne": "Pénétration_cellulaire", "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/CPP_PROTEOGEN_token_model_1280D.keras"
-     ,"brier": 0.11426204082920248, "ece": 0.028418, "platt_a": 2.234238, "platt_b": 1.086905, "n_val": 2460, 
+    {"nom_colonne": "Pénétration_cellulaire", "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/CPP_PROTEOGEN_token_model_1280D.keras",
+     "brier": 0.11426204082920248, "ece": 0.028418, "platt_a": 2.234238, "platt_b": 1.086905, "n_val": 2460, 
      "ece_bins": [
         {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0451,"accuracy": 0.0336,"count": 655},
         {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.146,"accuracy": 0.1845,"count": 206},
@@ -181,8 +181,8 @@ ALL_MODELS = [
         {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.853,"accuracy": 0.8672,"count": 271},
         {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9599,"accuracy": 0.9662,"count": 562}
     ]},
-    {"nom_colonne": "Drug_Delivery",          "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/DrugDelivery_PROTEOGEN_token_model_1280D.keras"
-     ,"brier": 0.08275502125231138, "ece": 0.009157, "platt_a": 2.402311, "platt_b": 3.128962, "n_val": 2624, 
+    {"nom_colonne": "Drug_Delivery",          "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/DrugDelivery_PROTEOGEN_token_model_1280D.keras",
+     "brier": 0.08275502125231138, "ece": 0.009157, "platt_a": 2.402311, "platt_b": 3.128962, "n_val": 2624, 
      "ece_bins": [
         {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0346,"accuracy": 0.0343,"count": 817},
         {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1452,"accuracy": 0.1531,"count": 196},
@@ -195,8 +195,8 @@ ALL_MODELS = [
         {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8526,"accuracy": 0.8235,"count": 153},
         {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9772,"accuracy": 0.9796,"count": 883}
     ]},
-    {"nom_colonne": "Régulation_Hormonale",   "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/Hormone_PROTEOGEN_token_model_1280D.keras'"
-     ,"brier": 0.07068438288688891, "ece": 0.010352, "platt_a": 4.819943, "platt_b": 3.316501, "n_val": 4876, 
+    {"nom_colonne": "Régulation_Hormonale",   "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/Hormone_PROTEOGEN_token_model_1280D.keras",
+     "brier": 0.07068438288688891, "ece": 0.010352, "platt_a": 4.819943, "platt_b": 3.316501, "n_val": 4876, 
      "ece_bins": [
         {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0171,"accuracy": 0.0154,"count": 1749},
         {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1479,"accuracy": 0.1339,"count": 239},
@@ -209,7 +209,34 @@ ALL_MODELS = [
         {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8538,"accuracy": 0.8747,"count": 391},
         {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9761,"accuracy": 0.97,"count": 1532}
     ]},
-
+    {"nom_colonne": "Potentialisateur",   "model": "Model_PROTEOGEN_V3_OK/Potentiator_PROTEOGEN_token_DoRA_CNN_model.keras",
+     "brier": 0.13433599245121514, "ece": 0.042651, "platt_a": 11.285076, "platt_b": 4.764228, "n_val": 431, 
+     "ece_bins": [
+        {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.039 ,"accuracy": 0.0235,"count": 85},
+        {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1502,"accuracy": 0.1935,"count": 31},
+        {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2505,"accuracy": 0.25  ,"count": 32},
+        {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.352 ,"accuracy": 0.4412,"count": 34},
+        {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4527,"accuracy": 0.5294,"count": 17},
+        {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.5579,"accuracy": 0.4857,"count": 35},
+        {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.6575,"accuracy": 0.5357,"count": 28},
+        {"bin_start": 0.7,"bin_end": 0.8,"confidence": 0.7499,"accuracy": 0.7273,"count": 33},
+        {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8557,"accuracy": 0.9151,"count": 59},
+        {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9503,"accuracy": 0.9351,"count": 77}
+    ]},
+    {"nom_colonne": "Stimulation_enzymatique",   "model": "Model_PROTEOGEN_V3_OK/Potentiator_PROTEOGEN_token_DoRA_CNN_model.keras",
+     "brier": 0.13177160222070358, "ece": 0.071827, "platt_a": 2.874647, "platt_b": -3.116224, "n_val": 2402, 
+     "ece_bins": [
+        {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0271,"accuracy": 0.0734,"count": 463},
+        {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1481,"accuracy": 0.2419,"count": 186},
+        {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2468,"accuracy": 0.2688,"count": 186},
+        {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.3506,"accuracy": 0.2395,"count": 167},
+        {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4546,"accuracy": 0.2612,"count": 134},
+        {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.5516,"accuracy": 0.3602,"count": 161},
+        {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.655 ,"accuracy": 0.5793,"count": 145},
+        {"bin_start": 0.7,"bin_end": 0.8,"confidence": 0.752 ,"accuracy": 0.7549,"count": 204},
+        {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8572,"accuracy": 0.9329,"count": 343},
+        {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.933 ,"accuracy": 0.9734,"count": 413}
+    ]},
     {"nom_colonne": "Activité_Hémolytique",   "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/AcHemo_PROTEOGEN_token_model_1280D.keras"
      ,"brier": 0.13238538446300185, "ece": 0.029125, "platt_a": 2.627478, "platt_b": -0.233982, "n_val": 3210, 
      "ece_bins": [
@@ -266,6 +293,20 @@ ALL_MODELS = [
         {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8551,"accuracy": 0.7882,"count": 203},
         {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9797,"accuracy": 0.9572,"count": 1308}
     ]},
+    {"nom_colonne": "Anti_Toxine",            "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/Anti_Toxin_PROTEOGEN_token_DORA_CNN_model.keras",
+     'brier': 0.13607491674807587, "ece": 0.028244, "platt_a": 4.761979, "platt_b": -5.257137, "n_val": 246,
+     "ece_bins": [
+        {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0415,"accuracy": 0.0208,"count": 48},
+        {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1519,"accuracy": 0.0714,"count": 14},
+        {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2579,"accuracy": 0.2778,"count": 18},
+        {"bin_start": 0.3,"bin_end": 0.4,"confidence":   0.36,"accuracy": 0.4615,"count": 13},
+        {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4527,"accuracy": 0.4583,"count": 24},
+        {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.5497,"accuracy":    0.6,"count": 20},
+        {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.6554,"accuracy": 0.6667,"count": 21},
+        {"bin_start": 0.7,"bin_end": 0.8,"confidence": 0.7484,"accuracy": 0.7333,"count": 15},
+        {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8477,"accuracy": 0.8621,"count": 29},
+        {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9576,"accuracy": 0.9318,"count": 44}
+    ]},
     {"nom_colonne": "Allergène",              "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/Allergen_PROTEOGEN_token_model_1280D.keras"
      ,"brier": 0.08057520755009741, "ece": 0.027906, "platt_a": 3.34204, "platt_b": 3.732625, "n_val": 3639, 
      "ece_bins": [
@@ -311,30 +352,30 @@ ALL_MODELS = [
     {"nom_colonne": "Anti_Bacterien",         "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/AB_PROTEOGEN_token_model_1280D.keras"
      ,"brier": 0.06667045243637942, "ece": 0.040717, "platt_a": 4.398331, "platt_b": -2.226266, "n_val": 1600, 
      "ece_bins": [
-      {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0312,"accuracy": 0.0613,"count": 571},
-      {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1446,"accuracy": 0.1038,"count": 106},
-      {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2439,"accuracy": 0.1667,"count": 54},
-      {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.348,"accuracy": 0.18,"count": 50},
-      {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4507,"accuracy": 0.3667,"count": 30},
-      {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.5455,"accuracy": 0.3864,"count": 44},
-      {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.6524,"accuracy": 0.5088,"count": 57},
-      {"bin_start": 0.7,"bin_end": 0.8,"confidence": 0.7455,"accuracy": 0.8163,"count": 49},
-      {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8577,"accuracy": 0.9818,"count": 55},
-      {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9878,"accuracy": 1.0,"count": 584}
+        {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0312,"accuracy": 0.0613,"count": 571},
+        {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1446,"accuracy": 0.1038,"count": 106},
+        {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2439,"accuracy": 0.1667,"count": 54},
+        {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.348,"accuracy": 0.18,"count": 50},
+        {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4507,"accuracy": 0.3667,"count": 30},
+        {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.5455,"accuracy": 0.3864,"count": 44},
+        {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.6524,"accuracy": 0.5088,"count": 57},
+        {"bin_start": 0.7,"bin_end": 0.8,"confidence": 0.7455,"accuracy": 0.8163,"count": 49},
+        {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8577,"accuracy": 0.9818,"count": 55},
+        {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9878,"accuracy": 1.0,"count": 584}
     ]},
     {"nom_colonne": "Anti_Fongique",          "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/AF_PROTEOGEN_token_model_1280D.keras"
      ,"brier": 0.16680802236032288, "ece": 0.044228, "platt_a": 3.768273, "platt_b": 6.578118, "n_val": 2336, 
      "ece_bins": [
-      {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0492,"accuracy": 0.0366,"count": 191},
-      {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1514,"accuracy": 0.081,"count": 210},
-      {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2537,"accuracy": 0.1833,"count": 251},
-      {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.3532,"accuracy": 0.3834,"count": 253},
-      {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4499,"accuracy": 0.4933,"count": 300},
-      {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.549,"accuracy": 0.5535,"count": 271},
-      {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.6472,"accuracy": 0.7298,"count": 248},
-      {"bin_start": 0.7,"bin_end": 0.8,"confidence": 0.7471,"accuracy": 0.7778,"count": 198},
-      {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8479,"accuracy": 0.8679,"count": 159},
-      {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9678,"accuracy": 0.902,"count": 255}
+        {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0492,"accuracy": 0.0366,"count": 191},
+        {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1514,"accuracy": 0.081,"count": 210},
+        {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2537,"accuracy": 0.1833,"count": 251},
+        {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.3532,"accuracy": 0.3834,"count": 253},
+        {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4499,"accuracy": 0.4933,"count": 300},
+        {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.549,"accuracy": 0.5535,"count": 271},
+        {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.6472,"accuracy": 0.7298,"count": 248},
+        {"bin_start": 0.7,"bin_end": 0.8,"confidence": 0.7471,"accuracy": 0.7778,"count": 198},
+        {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8479,"accuracy": 0.8679,"count": 159},
+        {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9678,"accuracy": 0.902,"count": 255}
     ]},
     {"nom_colonne": "Anti_Parasitique",       "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/AntiParasitic_PROTEOGEN_token_model_1280D.keras"
      ,"brier": 0.04695467524792357, "ece": 0.018611, "platt_a": 1.927235, "platt_b": -0.298947, "n_val": 4858, 
@@ -464,7 +505,7 @@ ALL_MODELS = [
     ]},
     {"nom_colonne": "Anti_Cancer",            "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/AntiCancer_PROTEOGEN_token_model_1280D.keras"
      ,"brier": 0.10470496065855767, "ece": 0.048684, "platt_a": 1.386577, "platt_b": 0.283643, "n_val": 4824, 
-     "ece_bins":  [
+     "ece_bins": [
         {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0474,"accuracy": 0.0599,"count": 1352},
         {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1422,"accuracy": 0.215,"count": 414},
         {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2503,"accuracy": 0.2946,"count": 224},
@@ -518,21 +559,50 @@ ALL_MODELS = [
         {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8464,"accuracy": 1.0,"count": 6},
         {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9816,"accuracy": 0.9817,"count": 109}
     ]},
+    {"nom_colonne": "Anti_Diabétique",          "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/Anti_Diabetic_PROTEOGEN_token_DoRA_CNN_model",
+     'brier': 0.17144489045298766, "ece": 0.035104, "platt_a": 2.15849, "platt_b": 3.138361, "n_val": 2858,
+     "ece_bins": [
+        {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0468,"accuracy": 0.0292,"count": 343},
+        {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1526,"accuracy": 0.0977,"count": 215},
+        {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2505,"accuracy": 0.2289,"count": 284},
+        {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.3502,"accuracy": 0.3793,"count": 274},
+        {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4471,"accuracy": 0.5481,"count": 208},
+        {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.5508,"accuracy": 0.5963,"count": 218},
+        {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.6544,"accuracy": 0.6415,"count": 265},
+        {"bin_start": 0.7,"bin_end": 0.8,"confidence": 0.7556,"accuracy": 0.7495,"count": 487},
+        {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.84  ,"accuracy": 0.8033,"count": 539},
+        {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.912 ,"accuracy": 1.0   ,"count": 25}
+    ]},
+    {"nom_colonne": "Inhibition_Coagulation",          "model": "Model_PROTEOGEN_V3_OK/Coag_Inhibitor_PROTEOGEN_token_DoRA_CNN_model.keras",
+     'brier': 0.10571146423768557, "ece": 0.031282, "platt_a": 4.9475, "platt_b": 2.179472, "n_val": 4256,
+     "ece_bins": [
+        {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0146,"accuracy": 0.0337,"count": 1187},
+        {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1463,"accuracy": 0.1146,"count": 157},
+        {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2463,"accuracy": 0.2202,"count": 168},
+        {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.35  ,"accuracy": 0.2649,"count": 151},
+        {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4529,"accuracy": 0.3466,"count": 176},
+        {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.5506,"accuracy": 0.4571,"count": 175},
+        {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.6527,"accuracy": 0.6141,"count": 241},
+        {"bin_start": 0.7,"bin_end": 0.8,"confidence": 0.7549,"accuracy": 0.8026,"count": 461},
+        {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8552,"accuracy": 0.8784 ,"count": 732},
+        {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.937 ,"accuracy": 0.9431,"count": 808}
+    ]},
     {"nom_colonne": "Umami",          "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/Umami_PROTEOGEN_token_model_1280D.keras",
      'brier': 0.10534684918818943, "ece": 0.022235, "platt_a": 5.854702, "platt_b": 0.578756, "n_val": 598,
      "ece_bins": [
-      {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.033,"accuracy": 0.0303,"count": 165},
-      {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1417,"accuracy": 0.1296,"count": 54},
-      {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2556,"accuracy": 0.1111,"count": 18},
-      {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.3455,"accuracy": 0.3793,"count": 29},
-      {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4513,"accuracy": 0.4286,"count": 21},
-      {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.5514,"accuracy": 0.65,"count": 20},
-      {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.6608,"accuracy": 0.7576,"count": 33},
-      {"bin_start": 0.7,"bin_end": 0.8,"confidence": 0.756,"accuracy": 0.7333,"count": 30},
-      {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8542,"accuracy": 0.871,"count": 93},
-      {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9396,"accuracy": 0.9185,"count": 135}
-    ]}
+        {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.033,"accuracy": 0.0303,"count": 165},
+        {"bin_start": 0.1,"bin_end": 0.2,"confidence": 0.1417,"accuracy": 0.1296,"count": 54},
+        {"bin_start": 0.2,"bin_end": 0.3,"confidence": 0.2556,"accuracy": 0.1111,"count": 18},
+        {"bin_start": 0.3,"bin_end": 0.4,"confidence": 0.3455,"accuracy": 0.3793,"count": 29},
+        {"bin_start": 0.4,"bin_end": 0.5,"confidence": 0.4513,"accuracy": 0.4286,"count": 21},
+        {"bin_start": 0.5,"bin_end": 0.6,"confidence": 0.5514,"accuracy": 0.65,"count": 20},
+        {"bin_start": 0.6,"bin_end": 0.7,"confidence": 0.6608,"accuracy": 0.7576,"count": 33},
+        {"bin_start": 0.7,"bin_end": 0.8,"confidence": 0.756,"accuracy": 0.7333,"count": 30},
+        {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8542,"accuracy": 0.871,"count": 93},
+        {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9396,"accuracy": 0.9185,"count": 135}
+    ]},
 ]
+
 AVAILABLE_ACTIVITIES = [m["nom_colonne"] for m in ALL_MODELS]
 ALL_MODULES = [
     "Prédictions DL (ESM-2 + CNN + MC Dropout)  — toujours actif",
@@ -639,9 +709,174 @@ def plot_global_XAI(global_impacts, activity_name):
     out_path_global_XAI = os.path.join(DIR_GRAPHS, f"Motif_global_XAI_{activity_name}.html")
     fig.write_html(out_path_global_XAI)
     logging.info(f"Motif global XAI sauvegardé : {out_path_global_XAI}")
-
 # ============================================================
-# PLATT SCALING — appliqué post-MC Dropout
+# ESM-FOLD / Docking
+# ============================================================
+def _mean_plddt_from_pdb(pdb_str: str) -> float:
+    """pLDDT globale = moyenne des B-factors des atomes CA du PDB ESMFold (échelle 0–100)."""
+    vals = []
+    for line in pdb_str.splitlines():
+        if line.startswith(("ATOM", "HETATM")) and line[12:16].strip() == "CA":
+            try:
+                vals.append(float(line[60:66]))
+            except ValueError:
+                pass
+    return float(np.mean(vals)) if vals else float("nan")
+
+
+def run_esmfold_module(
+    dataset,
+    esm2_model=None,
+    sheet_name: str = "",
+    esmfold_activities: list | None = None,
+    activity_threshold: float = 0.95,
+    top_n: int | None = None,
+):
+    """
+    Module ESM-Fold — prédiction de structure 3D (concurrent direct d'AlphaFold), continuité pipeline.
+
+    Sélectionne, par activité de `esmfold_activities`, les peptides dont la colonne
+    Peptide_<activité> >= `activity_threshold` (au plus `top_n`, triés proba décroissante),
+    les replie via esm.pretrained.esmfold_v1() (infer_pdb), écrit un .pdb par séquence unique
+    + un manifeste Excel, et reporte la pLDDT moyenne dans `dataset` (colonne ESMFold_pLDDT).
+
+    Returns:
+        dict { dataset, esm_model, alphabet, n_predicted, n_failed, pdb_dir }
+    """
+    activities = esmfold_activities or []
+    pdb_dir = os.path.join(DIR_ESMFOLD, str(sheet_name) if sheet_name else "run")
+    os.makedirs(pdb_dir, exist_ok=True)
+
+    def _clean(seq) -> str:
+        c = re.sub(r"\(.*?\)", "", str(seq))
+        return re.sub(r"[^ACDEFGHIKLMNPQRSTVWYX]", "", c.upper())
+
+    # ── Libère l'ESM-2 entrant pour réduire le pic VRAM avant chargement ESMFold ──
+    if esm2_model is not None:
+        try:
+            del esm2_model
+        except Exception:
+            pass
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    gc.collect()
+
+    # ── Sélection des peptides à replier (seuil + top_n par activité) ─────────────
+    selection = {}  # clean_seq -> {"orig", "activities": set, "max_proba"}
+    for act in activities:
+        col = f"Peptide_{act}"
+        if col not in dataset.columns:
+            logging.warning(f"ESM-Fold : colonne '{col}' absente — activité '{act}' ignorée")
+            continue
+        sub = dataset[dataset[col] >= activity_threshold].copy()
+        if sub.empty:
+            logging.info(f"ESM-Fold : aucun peptide >= {activity_threshold} pour '{act}'")
+            continue
+        sub = sub.sort_values(by=col, ascending=False)
+        if top_n:
+            sub = sub.head(int(top_n))
+        for _, row in sub.iterrows():
+            cseq = _clean(row["Peptide"])
+            if not cseq:
+                continue
+            rec = selection.setdefault(cseq, {"orig": str(row["Peptide"]), "activities": set(), "max_proba": 0.0})
+            rec["activities"].add(act)
+            rec["max_proba"] = max(rec["max_proba"], float(row[col]))
+
+    n_selected = len(selection)
+    logging.info(f"ESM-Fold : {n_selected} séquence(s) unique(s) sélectionnée(s) (feuille '{sheet_name}')")
+
+    n_predicted, n_failed = 0, 0
+    plddt_map, records = {}, []
+
+    # ── Chargement ESMFold v1 (GPU si disponible, repli CPU sinon) ────────────────
+    fold_model, device = None, "cpu"
+    if n_selected > 0:
+        try:
+            fold_model = esm.pretrained.esmfold_v1().eval()
+            if torch.cuda.is_available():
+                try:
+                    fold_model = fold_model.cuda()
+                    device = "cuda"
+                except RuntimeError as e:
+                    logging.warning(f"ESM-Fold : GPU indisponible, repli CPU ({e})")
+                    fold_model, device = fold_model.cpu(), "cpu"
+                    torch.cuda.empty_cache()
+            try:
+                fold_model.set_chunk_size(128)
+            except Exception:
+                pass
+            logging.info(f"ESM-Fold : esmfold_v1 chargé sur {device}")
+        except Exception as e:
+            logging.error(f"ESM-Fold : échec chargement esmfold_v1 : {e}", exc_info=True)
+            fold_model = None
+    else:
+        logging.info("ESM-Fold : aucune séquence sélectionnée — repliement ignoré")
+
+    # ── Repliement séquence par séquence (échecs isolés, non bloquants) ───────────
+    if fold_model is not None:
+        for idx, (cseq, rec) in enumerate(selection.items(), start=1):
+            try:
+                with torch.no_grad():
+                    pdb_str = fold_model.infer_pdb(cseq)
+                plddt = _mean_plddt_from_pdb(pdb_str)
+                fname = f"{idx:03d}_{cseq[:30]}.pdb"
+                with open(os.path.join(pdb_dir, fname), "w", encoding="utf-8") as fh:
+                    fh.write(pdb_str)
+                plddt_map[cseq] = plddt
+                records.append({
+                    "Peptide": rec["orig"],
+                    "Clean_Sequence": cseq,
+                    "Length": len(cseq),
+                    "Activities": ", ".join(sorted(rec["activities"])),
+                    "Max_Proba": round(rec["max_proba"], 4),
+                    "Mean_pLDDT": None if np.isnan(plddt) else round(plddt, 2),
+                    "PDB_File": fname,
+                })
+                n_predicted += 1
+                logging.info(f"ESM-Fold [{idx}/{n_selected}] {cseq[:20]}… pLDDT={plddt:.1f} → {fname}")
+            except Exception as e:
+                n_failed += 1
+                logging.error(f"ESM-Fold : échec repliement '{cseq[:20]}…' : {e}")
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+    else:
+        n_failed = n_selected
+
+    # ── Manifeste Excel (peptide ↔ activités ↔ pLDDT ↔ PDB) ───────────────────────
+    if records:
+        try:
+            manifest_path = os.path.join(pdb_dir, f"ESMFold_manifest_{sheet_name}.xlsx")
+            pd.DataFrame(records).to_excel(manifest_path, index=False)
+            logging.info(f"ESM-Fold : manifeste → {manifest_path}")
+        except Exception as e:
+            logging.warning(f"ESM-Fold : écriture manifeste échouée : {e}")
+
+    # ── Report pLDDT moyenne dans le dataset ──────────────────────────────────────
+    try:
+        dataset["ESMFold_pLDDT"] = dataset["Peptide"].map(lambda s: plddt_map.get(_clean(s)))
+    except Exception as e:
+        logging.warning(f"ESM-Fold : ajout colonne ESMFold_pLDDT échoué : {e}")
+
+    # ── Libère ESMFold, recharge ESM-2 pour la suite du pipeline ──────────────────
+    if fold_model is not None:
+        del fold_model
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    gc.collect()
+    logging.info("ESM-Fold : rechargement ESM-2 (esm2_t33_650M_UR50D) pour la suite du pipeline")
+    esm_model, alphabet = esm.pretrained.esm2_t33_650M_UR50D()
+
+    return {
+        "dataset": dataset,
+        "esm_model": esm_model,
+        "alphabet": alphabet,
+        "n_predicted": n_predicted,
+        "n_failed": n_failed,
+        "pdb_dir": pdb_dir,
+    }
+# ============================================================
+# PLATT SCALING
 # ============================================================
 def apply_platt(probas: np.ndarray, platt_a: float, platt_b: float, eps: float = 1e-7) -> np.ndarray:  
     """
@@ -714,7 +949,7 @@ def quality_control(activity: str, aspect: str = "all") -> dict:
             break
     if model_cfg is None:
         return {"error": f"Activité '{activity}' non trouvée dans ALL_MODELS"}
-    result = {"activity": activity, "aspect": aspect}
+    result: dict = {"activity": activity, "aspect": aspect}
     if aspect in ("calibration", "all"):
         brier    = model_cfg.get("brier")
         ece      = model_cfg.get("ece")
@@ -764,7 +999,7 @@ def quality_control(activity: str, aspect: str = "all") -> dict:
                 logging.info(f"Reliability diagram généré : {diagram_path}")
     return result
 
-def quality_control_all(activities: list = None) -> list:
+def quality_control_all(activities: list | None = None) -> list:
     """
     QC calibration pour plusieurs activités (ou toutes si None).
     Retourne liste de dicts quality_control().
@@ -864,18 +1099,15 @@ _DROID_LOGO_SVG = """<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/sv
 _DASHBOARD_FILTER_JS = r"""
 function setupActivityFilters() {
   // Filtre DataTables global : lit l'état des chips de la table en cours
-  $.fn.dataTable.ext.search.push(function(settings, searchData, dataIndex) {
-    var tableId = settings.sTableId;
-    var box = document.querySelector('[data-filter-for="' + tableId + '"]');
+  $.fn.dataTable.ext.search.push(function(settings, searchData, dataIndex, rowData) {
+    var box = document.querySelector('[data-filter-for="' + settings.sTableId + '"]');
     if (!box) return true;
     var checked = box.querySelectorAll('input.act-filter:checked');
     if (checked.length === 0) return true;
-    var row = settings.aoData[dataIndex].nTr;
-    var cells = row.getElementsByTagName('td');
     for (var i = 0; i < checked.length; i++) {
-      var colIdx = parseInt(checked[i].dataset.col, 10);
-      var order = parseFloat(cells[colIdx].getAttribute('data-order'));
-      if (!isFinite(order) || order < 0.90) return false;
+      var di = parseInt(checked[i].dataset.di, 10);
+      var v = rowData[di];
+      if (v == null || v < 0.90) return false;
     }
     return true;
   });
@@ -910,12 +1142,186 @@ function setupActivityFilters() {
 }
 """
 
+# ── Radar multi-activités par peptide (SVG maison, zéro dépendance) ──────────
+# Glyphe radar défini une seule fois (<symbol>), référencé par <use> dans chaque ligne (≈45 o/ligne au lieu de ≈620 o)
+_RADAR_SYMBOL = (
+    '<svg width="0" height="0" style="position:absolute" aria-hidden="true">'
+    '<symbol id="proteogen-radar-ic" viewBox="0 0 24 24">'
+    '<polygon points="12,3 20,9 17,19 7,19 4,9" fill="none" stroke="currentColor" stroke-width="1.4"/>'
+    '<polygon points="12,7.5 16.5,10.8 15,16 9,16 7.5,10.8" fill="none" stroke="currentColor" stroke-width="1" opacity="0.6"/>'
+    '<line x1="12" y1="12" x2="12" y2="3" stroke="currentColor" stroke-width="0.9" opacity="0.5"/>'
+    '<line x1="12" y1="12" x2="20" y2="9" stroke="currentColor" stroke-width="0.9" opacity="0.5"/>'
+    '<line x1="12" y1="12" x2="4" y2="9" stroke="currentColor" stroke-width="0.9" opacity="0.5"/>'
+    '<circle cx="12" cy="12" r="1.3" fill="currentColor"/></symbol></svg>'
+)
+_RADAR_GLYPH = '<svg class="ri-ic" aria-hidden="true"><use href="#proteogen-radar-ic"/></svg>'
+
+_RADAR_CSS = r"""
+.pep-cell{ display:flex; align-items:center; gap:8px; }
+.pep-name{ font-variant-ligatures:none; }
+.ri-ic{ width:15px; height:15px; }
+.radar-btn{
+  flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center;
+  width:24px; height:24px; padding:0; border:1px solid var(--ink-faint,#8a8a8a);
+  border-radius:6px; background:transparent; color:var(--ink-soft,#555);
+  cursor:pointer; line-height:0; transition:all .12s ease;
+}
+.radar-btn:hover{ color:var(--accent,#B0473F); border-color:var(--accent,#B0473F);
+  background:rgba(176,71,63,.06); }
+.radar-btn:focus-visible{ outline:2px solid var(--accent,#B0473F); outline-offset:1px; }
+.radar-modal{
+  position:fixed; inset:0; z-index:9999; display:none;
+  align-items:center; justify-content:center;
+  background:rgba(26,26,26,.55); padding:24px;
+}
+.radar-modal.open{ display:flex; }
+.radar-modal-card{
+  background:var(--paper,#fdfcfa); color:var(--ink,#1a1a1a);
+  border:1px solid var(--ink-faint,#8a8a8a); border-radius:14px;
+  box-shadow:0 18px 50px rgba(0,0,0,.28); width:min(520px,94vw);
+  max-height:92vh; overflow:auto; padding:18px 20px 14px;
+}
+.radar-modal-head{ display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+.radar-modal-kicker{ font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--ink-faint,#8a8a8a); }
+.radar-title{ font-weight:700; font-size:16px; color:var(--accent,#B0473F);
+  margin-right:auto; word-break:break-all; }
+.radar-close{ flex:0 0 auto; width:30px; height:30px; border:none; border-radius:8px;
+  background:transparent; color:var(--ink-soft,#555); font-size:22px; line-height:1; cursor:pointer; }
+.radar-close:hover{ background:rgba(0,0,0,.06); color:var(--ink,#1a1a1a); }
+.radar-canvas{ display:flex; justify-content:center; }
+.radar-svg{ width:100%; max-width:460px; height:auto; }
+.radar-grid{ fill:none; stroke:var(--ink-faint,#8a8a8a); stroke-opacity:.35; stroke-width:1; }
+.radar-axis{ stroke:var(--ink-faint,#8a8a8a); stroke-opacity:.4; stroke-width:1; }
+.radar-label{ font-size:10px; fill:var(--ink-soft,#555); font-family:inherit; }
+.radar-area{ fill:rgba(176,71,63,.18); stroke:var(--accent,#B0473F); stroke-width:1.8; stroke-linejoin:round; }
+.radar-dot{ fill:var(--accent,#B0473F); }
+.radar-dot.hi{ fill:#fff; stroke:var(--accent,#B0473F); stroke-width:2; }
+.radar-foot{ margin-top:8px; font-size:11px; color:var(--ink-faint,#8a8a8a); text-align:center; }
+"""
+
+_RADAR_MODAL = r"""
+<div id="radarModal" class="radar-modal" role="dialog" aria-modal="true" aria-label="Radar multi-activités">
+  <div class="radar-modal-card">
+    <div class="radar-modal-head">
+      <span class="radar-modal-kicker">Profil multi-activités</span>
+      <span class="radar-title"></span>
+      <button type="button" class="radar-close" aria-label="Fermer">&times;</button>
+    </div>
+    <div class="radar-canvas"></div>
+    <div class="radar-foot">Rayon = probabilité calibrée (centre 0 → bord 1). Points pleins = score ≥ 0.90.</div>
+  </div>
+</div>
+"""
+
+_RADAR_JS = r"""
+function _radarEsc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _radarBuildSVG(labels, values, unc){
+  var N = labels.length, size = 460, cx = size/2, cy = size/2, R = 165, rings = 4;
+  function pt(i, r){ var a = -Math.PI/2 + i*2*Math.PI/N; return [cx + r*Math.cos(a), cy + r*Math.sin(a)]; }
+  var parts = ['<svg viewBox="0 0 '+size+' '+size+'" xmlns="http://www.w3.org/2000/svg" class="radar-svg">'];
+  for (var k=1; k<=rings; k++){
+    var rr = R*k/rings, poly = [];
+    for (var i=0;i<N;i++){ var p=pt(i,rr); poly.push(p[0].toFixed(1)+','+p[1].toFixed(1)); }
+    parts.push('<polygon class="radar-grid" points="'+poly.join(' ')+'"/>');
+  }
+  for (var i=0;i<N;i++){
+    var pe = pt(i, R);
+    parts.push('<line class="radar-axis" x1="'+cx+'" y1="'+cy+'" x2="'+pe[0].toFixed(1)+'" y2="'+pe[1].toFixed(1)+'"/>');
+    var pl = pt(i, R+18), anchor = (Math.abs(pl[0]-cx) < 6) ? 'middle' : (pl[0] > cx ? 'start' : 'end');
+    parts.push('<text class="radar-label" x="'+pl[0].toFixed(1)+'" y="'+pl[1].toFixed(1)+'" text-anchor="'+anchor+'">'+_radarEsc(labels[i])+'</text>');
+  }
+  var vpoly = [], dots = [];
+  for (var i=0;i<N;i++){
+    var raw = values[i], v = (raw==null || isNaN(raw)) ? 0 : Math.max(0, Math.min(1, raw));
+    var p = pt(i, R*v); vpoly.push(p[0].toFixed(1)+','+p[1].toFixed(1));
+    var hi = (raw!=null) && (raw >= 0.90);
+    var u = (unc && unc[i]!=null) ? ' \u00b1'+Number(unc[i]).toFixed(3) : '';
+    var lbl = _radarEsc(labels[i])+' : '+(raw==null?'N/A':Number(raw).toFixed(3))+u;
+    dots.push('<circle class="radar-dot'+(hi?' hi':'')+'" cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="'+(hi?4:3)+'"><title>'+lbl+'</title></circle>');
+  }
+  parts.push('<polygon class="radar-area" points="'+vpoly.join(' ')+'"/>');
+  parts.push(dots.join(''));
+  parts.push('</svg>');
+  return parts.join('');
+}
+function _radarOpen(btn){
+  var tr = btn.closest('tr');
+  if (!tr) return;
+  var dt = $(tr).closest('table').DataTable();
+  var rowData = dt.row(tr).data();
+  if (!rowData) return;
+  var values = [];
+  for (var i = 0; i < RADAR_LABELS.length; i++){
+    var v = rowData[ACT_DATA_OFFSET + 2 * i];
+    values.push((v == null || isNaN(v)) ? null : v);
+  }
+  var modal = document.getElementById('radarModal');
+  if (!modal) return;
+  modal.querySelector('.radar-title').textContent = rowData[0];
+  modal.querySelector('.radar-canvas').innerHTML = _radarBuildSVG(RADAR_LABELS, values, null);
+  modal.classList.add('open');
+}
+function _radarClose(){ var m = document.getElementById('radarModal'); if (m) m.classList.remove('open'); }
+function setupRadar(){
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest ? e.target.closest('.radar-btn') : null;
+    if (btn){ e.preventDefault(); _radarOpen(btn); return; }
+    if (e.target.matches && (e.target.matches('.radar-modal') || e.target.matches('.radar-close'))) _radarClose();
+  });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') _radarClose(); });
+}
+"""
+
+
+# ── Rendu client des cellules (DataTables columns.render) — miroir JS de _bar_html ──────────
+_DASHBOARD_RENDER_JS = r"""
+var _RADAR_GLYPH_HTML = '<svg class="ri-ic" aria-hidden="true"><use href="#proteogen-radar-ic"/></svg>';
+function _esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _pepCell(pep){
+  return '<span class="pep-cell"><button type="button" class="radar-btn" title="Profil radar multi-activités" aria-label="Profil radar">'
+    + _RADAR_GLYPH_HTML + '</button><span class="pep-name">' + _esc(pep) + '</span></span>';
+}
+function _confClass(u){
+  if (u == null || isNaN(u)) return 'cf-na';
+  if (u < 0.05) return 'cf-h';
+  if (u < 0.15) return 'cf-m';
+  return 'cf-l';
+}
+function _barCell(p, u){
+  if (p == null || isNaN(p)) return '<span class="bar-na">N/A</span>';
+  var k = (p >= 1) ? 9 : Math.max(0, Math.floor(p * 10));
+  var width = Math.max(2, Math.round(p * 200));
+  var us = (u == null || isNaN(u)) ? '' : ' \u00b1' + Number(u).toFixed(3);
+  return '<div class="bar-cell"><div class="bar-wrap"><div class="bar-fill bf' + k + '" style="width:' + width + '%"></div></div>'
+    + '<span class="bar-val">' + Number(p).toFixed(3) + us + '</span>'
+    + '<span class="badge ' + _confClass(u) + '">\u25cf</span></div>';
+}
+function buildColumns(){
+  var cols = [{ data: 0, render: function(d, t, row){ return (t === 'display') ? _pepCell(d) : d; } }];
+  if (HAS_ACC) cols.push({ data: 1 });
+  for (var i = 0; i < RADAR_LABELS.length; i++){
+    (function(di, ui){
+      cols.push({ data: di, render: function(d, t, row){
+        if (t === 'sort' || t === 'type') return (d == null ? -1 : d);
+        if (t === 'filter') return d;
+        return _barCell(d, row[ui]);
+      }});
+    })(ACT_DATA_OFFSET + 2 * i, ACT_DATA_OFFSET + 2 * i + 1);
+  }
+  return cols;
+}
+"""
+
+
 def _generate_client_dashboard(df_global, model_a_tester, output_dir, graphs_id, date_run):
     """
     Dashboard HTML standalone : onglets par feuille, tableau filtrable
     (DataTables CDN), barres proba colorées ± incertitude, badge confiance
     MC Dropout (vert/orange/rouge). Aucune dépendance serveur.
     """
+    import json
+    import html as _html
     activities = [m["nom_colonne"] for m in model_a_tester]
     prob_cols  = [f"Peptide_{a}" for a in activities]
     keep = [(a, pc, f"Incertitude_{a}") for a, pc in zip(activities, prob_cols) if pc in df_global.columns]
@@ -930,46 +1336,52 @@ def _generate_client_dashboard(df_global, model_a_tester, output_dir, graphs_id,
     n_pep    = len(df_global)
     n_act    = len(activities)
     n_sheets = len(sheets)
-    def _badge(unc):
+    radar_labels_json = json.dumps(activities, ensure_ascii=False)
+    def _bar_class(unc):
         if pd.isna(unc):
-            return ("●", "#9ca3af", "indéterminée")
+            return "cf-na"
         if unc < 0.05:
-            return ("●", "#4F8A4F", "haute")
+            return "cf-h"
         if unc < 0.15:
-            return ("●", "#C58A2E", "moyenne")
-        return ("●", "#B0473F", "faible")
+            return "cf-m"
+        return "cf-l"
     def _bar_html(prob, unc):
         if pd.isna(prob):
-            return '<span style="color:#b7b3aa">N/A</span>'
+            return '<span class="bar-na">N/A</span>'
         p = float(prob)
-        color = _droid_bar_color(p)
+        k = 9 if p >= 1 else max(0, int(p * 10))   # bucket couleur -> classe CSS (.bf0..bf9)
         width = max(2, int(round(p * 200)))
         unc_str = f" ±{float(unc):.3f}" if not pd.isna(unc) else ""
-        sym, badge_col, conf_lbl = _badge(unc)
         return (
-            f'<div class="bar-cell" title="Probabilité={p:.4f}{unc_str} — confiance {conf_lbl}">'
-            f'<div class="bar-wrap"><div class="bar-fill" style="width:{width}%;background:{color}"></div></div>'
+            f'<div class="bar-cell">'
+            f'<div class="bar-wrap"><div class="bar-fill bf{k}" style="width:{width}%"></div></div>'
             f'<span class="bar-val">{p:.3f}{unc_str}</span>'
-            f'<span class="badge" style="color:{badge_col}">{sym}</span>'
+            f'<span class="badge {_bar_class(unc)}">●</span>'
             f'</div>'
         )
     sheet_tables_html = []
     table_ids = []
+    sheet_data_js = []
     has_accession = "Accession" in df_global.columns
     act_col_offset = 1 + (1 if has_accession else 0)
+    bar_color_css = "".join(f".bf{k}{{background:{_droid_bar_color((k + 0.5) / 10)};}}" for k in range(10))
     for s in sheets:
         df_s = df_global[df_global["Sheet"] == s]
-        rows_html = []
+        # Rendu piloté par données : aucune ligne <tr> émise. Tableau JS compact de nombres bruts,
+        # DataTables construit les cellules visibles via columns.render (deferRender).
+        tid_data = "table_" + re.sub(r'[^A-Za-z0-9]', '_', str(s))
+        data_rows = []
         for _, row in df_s.iterrows():
-            cells = [f'<td>{row.get("Peptide", "")}</td>']
+            rec: list[str | None] = [str(row.get("Peptide", ""))]
             if has_accession:
-                cells.append(f'<td>{row.get("Accession", "")}</td>')
+                rec.append(str(row.get("Accession", "")))
             for pc, uc in zip(prob_cols, unc_cols):
                 p = row.get(pc, np.nan)
                 u = row.get(uc, np.nan) if uc in df_s.columns else np.nan
-                order_val = float(p) if not pd.isna(p) else -1.0
-                cells.append(f'<td data-order="{order_val}">{_bar_html(p, u)}</td>')
-            rows_html.append(f'<tr>{"".join(cells)}</tr>')
+                rec.append(None if pd.isna(p) else str(round(float(p), 5)))
+                rec.append(None if pd.isna(u) else str(round(float(u), 5)))
+            data_rows.append(rec)
+        sheet_data_js.append(f'SHEET_DATA["{tid_data}"] = {json.dumps(data_rows, ensure_ascii=False)};')
         header_cells = ['<th>Peptide</th>']
         if has_accession:
             header_cells.append('<th>Accession</th>')
@@ -978,7 +1390,7 @@ def _generate_client_dashboard(df_global, model_a_tester, output_dir, graphs_id,
         table_ids.append(tid)
         chip_html = "".join(
             f'<label class="af-chip"><input type="checkbox" class="act-filter" '
-            f'data-col="{act_col_offset + i}" value="{a}"> <span>{a}</span></label>'
+            f'data-di="{act_col_offset + 2 * i}" value="{a}"> <span>{a}</span></label>'
             for i, a in enumerate(activities)
         )
         act_filter_html = (
@@ -995,7 +1407,7 @@ def _generate_client_dashboard(df_global, model_a_tester, output_dir, graphs_id,
             f'{act_filter_html}'
             f'<table id="{tid}" class="display nowrap" style="width:100%">'
             f'<thead><tr>{"".join(header_cells)}</tr></thead>'
-            f'<tbody>{"".join(rows_html)}</tbody>'
+            f'<tbody></tbody>'
             f'</table></div>'
         )
     tabs_buttons = "".join(
@@ -1003,9 +1415,12 @@ def _generate_client_dashboard(df_global, model_a_tester, output_dir, graphs_id,
         for i, (s, tid) in enumerate(zip(sheets, table_ids))
     )
     dt_init_js = "\n      ".join(
-        f"$('#{tid}').DataTable({{pageLength: 25, scrollX: true, order: [], deferRender: true}});"
+        f"$('#{tid}').DataTable({{data: SHEET_DATA['{tid}'], columns: buildColumns(), "
+        f"pageLength: 25, scrollX: true, order: [], deferRender: true}});"
         for tid in table_ids
     )
+    sheet_data_block = "\n".join(sheet_data_js)
+    has_acc_js = "true" if has_accession else "false"
     first_tab_js = (
         f'document.getElementById("tab_{table_ids[0]}").style.display = "block";'
         if table_ids else ""
@@ -1243,6 +1658,9 @@ html,body{{
   color:var(--ink-soft); white-space:nowrap;
 }}
 .badge{{ font-size:13px; line-height:1; }}
+.badge.cf-h{{ color:#4F8A4F; }} .badge.cf-m{{ color:#C58A2E; }} .badge.cf-l{{ color:#B0473F; }} .badge.cf-na{{ color:#9ca3af; }}
+.bar-na{{ color:#b7b3aa; }}
+{bar_color_css}
 table.dataTable{{
   border-collapse:collapse !important;
   width:100% !important;
@@ -1340,6 +1758,7 @@ table.dataTable tbody tr:hover td{{
   .toolbar{{ display:none; }}
   .sheet{{ box-shadow:none; }}
 }}
+{_RADAR_CSS}
 </style>
 </head>
 <body>
@@ -1375,6 +1794,8 @@ table.dataTable tbody tr:hover td{{
     </div>
     <div class="tabs">{tabs_buttons}</div>
     {"".join(sheet_tables_html)}
+    {_RADAR_SYMBOL}
+    {_RADAR_MODAL}
     <footer class="fig-footer">
       <span>DROID Team · Peptidomique · sortie pipeline ARDF</span>
       <span class="filename">{dashboard_fname}</span>
@@ -1382,6 +1803,11 @@ table.dataTable tbody tr:hover td{{
   </div>
 </div>
 <script>
+var RADAR_LABELS = {radar_labels_json};
+var ACT_DATA_OFFSET = {act_col_offset};
+var HAS_ACC = {has_acc_js};
+var SHEET_DATA = {{}};
+{sheet_data_block}
 document.querySelectorAll('.tab-btn').forEach(btn => {{
   btn.addEventListener('click', () => {{
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -1391,10 +1817,13 @@ document.querySelectorAll('.tab-btn').forEach(btn => {{
   }});
 }});
 {first_tab_js}
+{_DASHBOARD_RENDER_JS}
 {_DASHBOARD_FILTER_JS}
+{_RADAR_JS}
 $(document).ready(function() {{
       {dt_init_js}
       setupActivityFilters();
+      setupRadar();
 }});
 </script>
 </body>
@@ -1453,7 +1882,7 @@ def get_file_info(file_path: str) -> dict:
     if info["n_sheets"] == 0:
         info["warnings"].append("Fichier Excel sans aucune feuille.")
         return info
-    peptide_sheet_names = [s for s in xls.sheet_names if "_Peptides" in s]
+    peptide_sheet_names = [s for s in xls.sheet_names if "_Peptides" in str(s)]
     if not peptide_sheet_names:
         info["warnings"].append(
             "Aucune feuille avec suffixe '_Peptides'. La pipeline traitera toutes les feuilles."
@@ -1595,7 +2024,7 @@ def load_run(run_id: str) -> dict:
             continue
         pred_cols = [c for c in df.columns if str(c).startswith("Peptide_")]
         detected_acts.update(str(c).replace("Peptide_", "", 1) for c in pred_cols)
-        if "_Peptides" in s and "Peptide" in df.columns:
+        if "_Peptides" in str(s) and "Peptide" in df.columns:
             series = df["Peptide"].astype(str).str.strip()
             n_p = int(len(series) - series.isin(["", "nan", "None"]).sum())
             total_pep += n_p
@@ -1659,7 +2088,7 @@ def run_clustering(run_id: str, cutoff: float = 0.7) -> dict:
     except Exception as e:
         result["error"] = f"Lecture XLSX impossible : {e}"
         return result
-    peptide_sheets = [s for s in xls.sheet_names if "_Peptides" in s] or [
+    peptide_sheets = [s for s in xls.sheet_names if "_Peptides" in str(s)] or [
         s for s in xls.sheet_names if s != "Matériel_et_Méthodes"
     ]
 
@@ -1789,16 +2218,16 @@ def run_clustering(run_id: str, cutoff: float = 0.7) -> dict:
 @_ntfy_on_critical_error("run pipeline")
 def run_proteogen_pipeline(
     input_file: str,
-    target_activities: list = None,
+    target_activities: list | None = None,
     run_smiles: bool = False,
     run_clustering: bool = False,
     clustering_cutoff: float = 0.7,
-    run_signalp: list = None,
+    run_signalp: list | None = None,
     run_xai: bool = False,
     run_esmfold: bool = False,
-    esmfold_activities: list = None,
+    esmfold_activities: list | None = None,
     esmfold_threshold: float = 0.95,
-    esmfold_top_n: int = None,
+    esmfold_top_n: int | None = None,
 ) -> dict:
     """
     Exécute le pipeline complet PROTEOGEN.
@@ -1840,7 +2269,7 @@ def run_proteogen_pipeline(
     
     """
     # Création des dossiers de sortie
-    for d in [DIR_LOGS, DIR_GRAPHS, DIR_XLSX_Interest, DIR_FASTA_Interest, DIR_CLUSTER, DIR_SIGNALP]:
+    for d in [DIR_LOGS, DIR_GRAPHS, DIR_XLSX_Interest, DIR_FASTA_Interest, DIR_CLUSTER, DIR_SIGNALP, DIR_ESMFOLD]:
         os.makedirs(d, exist_ok=True)
     start_time = time.time()
     date_run   = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -1884,7 +2313,7 @@ def run_proteogen_pipeline(
     logging.info(f"Lecture du fichier Excel : {input_file}")
     try:
         xls = pd.ExcelFile(input_file)
-        peptide_sheet = [s for s in xls.sheet_names if "_Peptides" in s]
+        peptide_sheet = [s for s in xls.sheet_names if "_Peptides" in str(s)]
         if not peptide_sheet:
             logging.warning("Aucune feuille '_Peptides'. Traitement de toutes les feuilles.")
             peptide_sheet = xls.sheet_names
@@ -1957,12 +2386,12 @@ def run_proteogen_pipeline(
                         raw_probas = np.array(predicted_class)
                         calibrated_probas = apply_platt(raw_probas, pa, pb)
                         logging.info("Platt scaling appliqué aux probabilités MC Dropout")
-                        nom_col_raw = f"Peptide_{nom}"
-                        dataset.loc[valid_indices, nom_col_raw] = predicted_class
+                        nom_col_cal = f"Peptide_{nom}"
+                        dataset.loc[valid_indices, nom_col_cal] = calibrated_probas
                         predicted_class = [round(float(p), 5) for p in calibrated_probas]
                     nom_col_uncert  = f"Incertitude_{nom}"
                     dataset.loc[valid_indices, nom_col_uncert] = uncertainty_class
-                    logging.info(f"Colonne '{nom_col_raw}' ajoutée")
+                    logging.info(f"Colonne '{nom_col_cal}' ajoutée")
                     logging.info("Prédictions terminées")
                     # ── Gestion mémoire — NE PAS MODIFIER ────────────────────
                     try:
@@ -1987,7 +2416,7 @@ def run_proteogen_pipeline(
                     esmfold_results = run_esmfold_module(
                         dataset=dataset,
                         esm2_model=model_esm,
-                        sheet_name=sheet_name,
+                        sheet_name=str(sheet_name),
                         esmfold_activities=esmfold_activities,
                         activity_threshold=esmfold_threshold,
                         top_n = esmfold_top_n,
@@ -2181,7 +2610,7 @@ def run_proteogen_pipeline(
                     'Pyroglutamate': rxn_pyroglutamate,
                     'Deamidation': rxn_deamidation
                 }
-                dataset = generate_smile_column(dataset)
+                datasetS = generate_smile_column(dataset)
                 def get_smile_with_ptm(seq):
                     seq_str = str(seq).upper()
                     #Récuperer la séquence 
@@ -2197,8 +2626,8 @@ def run_proteogen_pipeline(
                         if '(-0.98)' in seq_str:
                             modified_mols = ptm_reactions['Amidation'].RunReactants((mol,))
                             if modified_mols:
-                                mol = modified_mols[0][0] # Take first valid product
-                                Chem.SanitizeMol(mol)     # Always sanitize after a reaction
+                                mol = modified_mols[0][0]
+                                Chem.SanitizeMol(mol)
                         if '(-17.02)' in seq_str:
                             modified_mols = ptm_reactions['Pyroglutamate'].RunReactants((mol,))
                             if modified_mols:
@@ -2265,7 +2694,7 @@ def run_proteogen_pipeline(
             method_rows.append({"Section": "SignalP", "Paramètre": "Peptides signal", "Valeur": "SignalP 6.0 (eukarya, slow-sequential)", "Détail": f"Activités filtrées : {run_signalp}"})
         # Section 6 — Métadonnées run
         method_rows.append({"Section": "Métadonnées", "Paramètre": "Date exécution", "Valeur": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Détail": ""})
-        method_rows.append({"Section": "Métadonnées", "Paramètre": "Fichier entrée", "Valeur": os.path.basename(input_file), "Détail": f"Feuilles : {', '.join(peptide_sheet)}"})
+        method_rows.append({"Section": "Métadonnées", "Paramètre": "Fichier entrée", "Valeur": os.path.basename(input_file), "Détail": f"Feuilles : {', '.join(str(s) for s in peptide_sheet)}"})
         method_rows.append({"Section": "Métadonnées", "Paramètre": "Modèles exécutés", "Valeur": str(len(model_a_tester)), "Détail": ", ".join(c["nom_colonne"] for c in model_a_tester)})
         method_rows.append({"Section": "Métadonnées", "Paramètre": "Fichier sortie", "Valeur": os.path.basename(sortie_file), "Détail": ""})
         df_methods = pd.DataFrame(method_rows)
@@ -2438,11 +2867,17 @@ def run_proteogen_pipeline(
                 )
     # ── Collecte des fichiers HTML générés ────────────────────────────────────
     html_files_generated = []
-    for search_dir in [DIR_GRAPHS, DIR_CLUSTER]:
+    for search_dir in [DIR_GRAPHS, DIR_CLUSTER, DIR_DASHBOARD]:
         if os.path.isdir(search_dir):
             for fname in sorted(os.listdir(search_dir)):
-                if fname.endswith(".html"):
-                    html_files_generated.append(os.path.join(search_dir, fname))
+                if not fname.endswith(".html"):
+                    continue
+                fpath = os.path.join(search_dir, fname)
+                # Run actuel uniquement : on ne garde que les HTML (ré)écrits depuis
+                # le début du run. Évite de ramasser les graphiques des runs
+                # précédents encore présents dans DIR_GRAPHS / DIR_CLUSTER / DIR_DASHBOARD.
+                if os.path.getmtime(fpath) >= start_time:
+                    html_files_generated.append(fpath)
     # ── Dashboard client HTML interactif ──────────────────────────────────────
     dashboard_html = None
     try:
@@ -2450,11 +2885,13 @@ def run_proteogen_pipeline(
             dashboard_html = _generate_client_dashboard(
                 df_global=df_global,
                 model_a_tester=model_a_tester,
-                output_dir= DIR_CLUSTER,
+                output_dir=DIR_DASHBOARD,
                 graphs_id=graphs_id,
                 date_run=date_run,
             )
-            html_files_generated.append(dashboard_html)
+            # NB : pas d'ajout à html_files_generated — le dashboard (souvent
+            # >200 Mo) est exposé séparément via la clé 'dashboard_html' et ne doit
+            # PAS être ré-embarqué dans les onglets (limite websocket Streamlit).
             logging.info(f"Dashboard client généré : {dashboard_html}")
         else:
             logging.warning("Dashboard client ignoré : df_global vide")
