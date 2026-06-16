@@ -16,6 +16,8 @@ import functools
 import urllib.request
 import urllib.error
 import json
+import zipfile
+import tempfile
 import html as _html
 
 # Global stop event — set via request_stop() to interrupt a running pipeline
@@ -48,6 +50,71 @@ DIR_ESMFOLD       = "Output_ESMfold_1280D"
 # Nombre de passes MC Dropout — variable globale accessible par generate_XAI_model
 mc_passes = 40
 # Imports lourds (exécutés une seule fois au chargement du module)
+from keras.models import load_model  # type: ignore
+
+# ============================================================
+# CHARGEMENT RÉSILIENT DES MODÈLES .keras (compat. versions Keras)
+# ------------------------------------------------------------
+# Les modèles ont été sauvegardés avec Keras >= 3.4, qui écrit une clé
+# 'quantization_config' dans la config de chaque couche. Une version de
+# Keras plus ancienne sur la machine d'inférence rejette ce kwarg inconnu :
+#   ValueError: Unrecognized keyword arguments passed to Dense:
+#               {'quantization_config': None}
+# Solution sans ré-entraînement ni mise à jour d'environnement : on retire
+# récursivement les clés inconnues de config.json à l'intérieur de l'archive
+# .keras (un zip), puis on recharge. Comme 'quantization_config' vaut None
+# (aucune quantification appliquée), l'architecture et les poids sont
+# strictement préservés.
+# ============================================================
+# Clés introduites par des versions récentes de Keras et inconnues des
+# anciennes — étendre cette liste si d'autres kwargs posent problème.
+_KERAS_KEYS_INCONNUES = ("quantization_config",)
+
+def _strip_keys_inconnues(obj):
+    """Supprime récursivement les clés inconnues d'une config Keras (in place)."""
+    if isinstance(obj, dict):
+        for cle in list(obj.keys()):
+            if cle in _KERAS_KEYS_INCONNUES:
+                del obj[cle]
+            else:
+                _strip_keys_inconnues(obj[cle])
+    elif isinstance(obj, list):
+        for item in obj:
+            _strip_keys_inconnues(item)
+
+def safe_load_model(model_path, **kwargs):
+    """Charge un modèle .keras en tolérant les écarts de version de Keras.
+
+    Tente d'abord un chargement normal. En cas d'échec dû à un kwarg inconnu
+    (ex. 'quantization_config'), nettoie la config sérialisée dans l'archive
+    et réessaie. Toute autre erreur est propagée telle quelle.
+    """
+    try:
+        return load_model(model_path, **kwargs)
+    except (TypeError, ValueError) as exc:
+        if not any(cle in str(exc) for cle in _KERAS_KEYS_INCONNUES):
+            raise
+        logging.warning(
+            "Modèle '%s' sauvegardé avec une version de Keras plus récente "
+            "(%s détecté). Nettoyage de la config et nouvelle tentative.",
+            model_path, ", ".join(_KERAS_KEYS_INCONNUES),
+        )
+        if not zipfile.is_zipfile(model_path):
+            # Ancien format .h5 ou fichier non-zip : on ne sait pas le patcher.
+            raise
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            patched_path = os.path.join(tmp_dir, "patched_model.keras")
+            with zipfile.ZipFile(model_path, "r") as zin, \
+                 zipfile.ZipFile(patched_path, "w", zipfile.ZIP_DEFLATED) as zout:
+                for item in zin.namelist():
+                    data = zin.read(item)
+                    if item == "config.json":
+                        cfg = json.loads(data.decode("utf-8"))
+                        _strip_keys_inconnues(cfg)
+                        data = json.dumps(cfg).encode("utf-8")
+                    zout.writestr(item, data)
+            return load_model(patched_path, **kwargs)
+
 from keras.models import load_model   # type: ignore
 import torch                          # type: ignore
 import esm                            # type: ignore
@@ -2286,7 +2353,7 @@ def run_proteogen_pipeline(
                 try:
                     X_test_scaled = embeddings_memory
                     logging.info("Chargement du modèle CNN Keras")
-                    cnn_model = load_model(config["model"])
+                    cnn_model = safe_load_model(config["model"])
                     logging.info("-> Modèle Keras chargé dans la RAM")
                     logging.info(f"Monte Carlo Dropout : {mc_passes} passes")
                     mc_prediction = []
@@ -2674,7 +2741,7 @@ def run_proteogen_pipeline(
             logging.info(f"XAI top 10 pour : {nom}")
             top_10_df = df_global.sort_values(by=nom_col_tableau, ascending=False).head(10)
             try:
-                cnn_model = load_model(config["model"])
+                cnn_model = safe_load_model(config["model"])
                 global_aa_impacts = {aa: [] for aa in "ACDEFGHIKLMNPQRSTVWY"}
                 for _, row in top_10_df.iterrows():
                     seq_to_test = re.sub(r"[^ACDEFGHIKLMNPQRSTVWY]", "X",
