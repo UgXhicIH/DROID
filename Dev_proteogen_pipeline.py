@@ -129,6 +129,12 @@ import Clustering_PepFuNN_1280D_UMAP  # type: ignore
 import plotly.express as px           # type: ignore
 import plotly.graph_objects as go     # type: ignore
 from keras import backend as K        # type: ignore
+import tensorflow as tf               # type: ignore
+# PyTorch (ESM2) et TensorFlow/Keras (CNN 1D) utilisent des versions de CuDNN
+# incompatibles dans le même venv (PyTorch 2.5 → CuDNN 9.1 ; TF 2.17+ → CuDNN 9.3).
+# Solution : TF/Keras s'exécute sur CPU. Les CNN 1D sont légers ; PyTorch/ESM2
+# garde l'accès exclusif au GPU V100.
+tf.config.set_visible_devices([], 'GPU')
 from rdkit import Chem                # type: ignore
 from Bio import SeqIO                 # type: ignore
 from scipy.special import logit as scipy_logit, expit as sigmoid  # type: ignore
