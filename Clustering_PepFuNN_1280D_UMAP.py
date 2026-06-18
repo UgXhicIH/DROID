@@ -11,6 +11,7 @@ __modification__ = "MorganFigerprint vector updated, T-Sne Modified, now use a d
 
 # Sys functions
 import matplotlib.pyplot as plt #type: ignore
+from matplotlib.markers import MarkerStyle #type: ignore
 import pandas as pd #type: ignore
 import numpy as np #type: ignore
 import math
@@ -442,7 +443,7 @@ class propClustering:
         # Saving PCA values to a new table
         descriptors_pca= pd.DataFrame(descriptors_2d)
         descriptors_pca.index = self.table.index
-        descriptors_pca.columns = ['PC{}'.format(i+1) for i in descriptors_pca.columns]
+        descriptors_pca.columns = ['PC{}'.format(i+1) for i in descriptors_pca.columns] #type: ignore
 
         # Plot PC1 and PC2
         scale1 = 1.0/(max(descriptors_pca['PC1']) - min(descriptors_pca['PC1']))
@@ -465,22 +466,21 @@ class propClustering:
             ax=sns.scatterplot(x='PC1_normalized',y='PC2_normalized', data=descriptors_pca, hue='Cluster', s=20, palette=sns.color_palette("Set2", len(list(set(clusters.labels_)))), linewidth=0.2, alpha=1)
         else:
             ax=sns.scatterplot(x='PC1_normalized',y='PC2_normalized', data=descriptors_pca, s=20, color=sns.color_palette("Set2", 3)[0], linewidth=0.2, alpha=1)        
-        if reference:
             if not legends:
                 for index, row in descriptors_pca.iterrows():
                     for mol_idx in mol_idx_list:
                         if index==mol_idx:
-                            plt.scatter(x=row['PC1_normalized'], y=row['PC2_normalized'], s=40, c='pink', marker='o', edgecolors='black', linewidths=1)
+                            plt.scatter(x=row['PC1_normalized'], y=row['PC2_normalized'], s=40, c='pink', marker=MarkerStyle('o'), edgecolors='black', linewidths=1)
             else:
                 colors = ['red', 'yellow', 'green', 'blue', 'purple', 'orange', 'pink', 'brown', 'gray', 'black', 'turquoise', 'magenta', 'lavender', 'teal', 'maroon', 'navy', 'olive', 'cyan', 'indigo']
-                counter=0
                 for index, row in descriptors_pca.iterrows():
                     for mol_idx in mol_idx_list:
                         if index==mol_idx:
                             if color_index:
-                                plt.scatter(x=row['PC1_normalized'], y=row['PC2_normalized'], s=40, c=colors[color_index[counter]], marker='o', edgecolors='black', linewidths=1, label=reference[counter], alpha=1)
+                                plt.scatter(x=row['PC1_normalized'], y=row['PC2_normalized'], s=40, c=colors[color_index[counter]], marker=MarkerStyle('o'), edgecolors='black', linewidths=1, label=reference[counter], alpha=1)
                             else:
-                                plt.scatter(x=row['PC1_normalized'], y=row['PC2_normalized'], s=40, c=colors[counter], marker='o', edgecolors='black', linewidths=1, label=reference[counter], alpha=1)
+                                plt.scatter(x=row['PC1_normalized'], y=row['PC2_normalized'], s=40, c=colors[counter], marker=MarkerStyle('o'), edgecolors='black', linewidths=1, label=reference[counter], alpha=1)
+                            counter+=1
                             counter+=1
                 plt.legend(loc='best',frameon=False,prop={'size': 10})
         
@@ -505,7 +505,7 @@ class propClustering:
                 plt.arrow(0, 0, l[i,0], l[i,1],color= 'k',alpha=0.5,linewidth=1.8,head_width=0.025)
                 plt.text(l[i,0]*1.25, l[i,1]*1.25, list_desc[i], color = 'k',va = 'center', ha = 'center', fontsize=14)
 
-        circle = plt.Circle((0,0), 1, color='gray', fill=False, clip_on=True, linewidth=1.5, linestyle='--')
+        circle = plt.circle((0,0), 1, color='gray', fill=False, clip_on=True, linewidth=1.5, linestyle='--') #type: ignore
 
         plt.tick_params ('both',width=2, labelsize=14)
 

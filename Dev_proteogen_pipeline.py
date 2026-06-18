@@ -16,8 +16,6 @@ import functools
 import urllib.request
 import urllib.error
 import json
-import zipfile
-import tempfile
 import html as _html
 
 # Global stop event — set via request_stop() to interrupt a running pipeline
@@ -50,55 +48,6 @@ DIR_ESMFOLD       = "Output_ESMfold_1280D"
 # Nombre de passes MC Dropout — variable globale accessible par generate_XAI_model
 mc_passes = 40
 # Imports lourds (exécutés une seule fois au chargement du module)
-from keras.models import load_model  # type: ignore
-
-_KERAS_KEYS_INCONNUES = ("quantization_config",)
-
-def _strip_keys_inconnues(obj):
-    """Supprime récursivement les clés inconnues d'une config Keras (in place)."""
-    if isinstance(obj, dict):
-        for cle in list(obj.keys()):
-            if cle in _KERAS_KEYS_INCONNUES:
-                del obj[cle]
-            else:
-                _strip_keys_inconnues(obj[cle])
-    elif isinstance(obj, list):
-        for item in obj:
-            _strip_keys_inconnues(item)
-
-def safe_load_model(model_path, **kwargs):
-    """Charge un modèle .keras en tolérant les écarts de version de Keras.
-
-    Tente d'abord un chargement normal. En cas d'échec dû à un kwarg inconnu
-    (ex. 'quantization_config'), nettoie la config sérialisée dans l'archive
-    et réessaie. Toute autre erreur est propagée telle quelle.
-    """
-    try:
-        return load_model(model_path, **kwargs)
-    except (TypeError, ValueError) as exc:
-        if not any(cle in str(exc) for cle in _KERAS_KEYS_INCONNUES):
-            raise
-        logging.warning(
-            "Modèle '%s' sauvegardé avec une version de Keras plus récente "
-            "(%s détecté). Nettoyage de la config et nouvelle tentative.",
-            model_path, ", ".join(_KERAS_KEYS_INCONNUES),
-        )
-        if not zipfile.is_zipfile(model_path):
-            # Ancien format .h5 ou fichier non-zip : on ne sait pas le patcher.
-            raise
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            patched_path = os.path.join(tmp_dir, "patched_model.keras")
-            with zipfile.ZipFile(model_path, "r") as zin, \
-                 zipfile.ZipFile(patched_path, "w", zipfile.ZIP_DEFLATED) as zout:
-                for item in zin.namelist():
-                    data = zin.read(item)
-                    if item == "config.json":
-                        cfg = json.loads(data.decode("utf-8"))
-                        _strip_keys_inconnues(cfg)
-                        data = json.dumps(cfg).encode("utf-8")
-                    zout.writestr(item, data)
-            return load_model(patched_path, **kwargs)
-
 from keras.models import load_model   # type: ignore
 import torch                          # type: ignore
 import esm                            # type: ignore
@@ -113,12 +62,6 @@ import Clustering_PepFuNN_1280D_UMAP  # type: ignore
 import plotly.express as px           # type: ignore
 import plotly.graph_objects as go     # type: ignore
 from keras import backend as K        # type: ignore
-import tensorflow as tf               # type: ignore
-# PyTorch (ESM2) et TensorFlow/Keras (CNN 1D) utilisent des versions de CuDNN
-# incompatibles dans le même venv (PyTorch 2.5 → CuDNN 9.1 ; TF 2.17+ → CuDNN 9.3).
-# Solution : TF/Keras s'exécute sur CPU. Les CNN 1D sont légers ; PyTorch/ESM2
-# garde l'accès exclusif au GPU V100.
-tf.config.set_visible_devices([], 'GPU')
 from rdkit import Chem                # type: ignore
 from Bio import SeqIO                 # type: ignore
 from scipy.special import logit as scipy_logit, expit as sigmoid  # type: ignore
@@ -199,7 +142,7 @@ ALL_MODELS = [
         {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8538,"accuracy": 0.8747,"count": 391},
         {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9761,"accuracy": 0.97,"count": 1532}
     ]},
-    {"nom_colonne": "Potentialisateur",   "model": "Model_PROTEOGEN_V3_OK/Potentiator_PROTEOGEN_token_DoRA_CNN_model.keras",
+    {"nom_colonne": "Potentialisateur",   "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/Potentiator_PROTEOGEN_token_DoRA_CNN_model.keras",
      "brier": 0.13433599245121514, "ece": 0.042651, "platt_a": 11.285076, "platt_b": 4.764228, "n_val": 431, 
      "ece_bins": [
         {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.039 ,"accuracy": 0.0235,"count": 85},
@@ -213,7 +156,7 @@ ALL_MODELS = [
         {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.8557,"accuracy": 0.9151,"count": 59},
         {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.9503,"accuracy": 0.9351,"count": 77}
     ]},
-    {"nom_colonne": "Stimulation_enzymatique",   "model": "Model_PROTEOGEN_V3_OK/Potentiator_PROTEOGEN_token_DoRA_CNN_model.keras",
+    {"nom_colonne": "Stimulation_enzymatique",   "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/Potentiator_PROTEOGEN_token_DoRA_CNN_model.keras",
      "brier": 0.13177160222070358, "ece": 0.071827, "platt_a": 2.874647, "platt_b": -3.116224, "n_val": 2402, 
      "ece_bins": [
         {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0271,"accuracy": 0.0734,"count": 463},
@@ -563,7 +506,7 @@ ALL_MODELS = [
         {"bin_start": 0.8,"bin_end": 0.9,"confidence": 0.84  ,"accuracy": 0.8033,"count": 539},
         {"bin_start": 0.9,"bin_end": 1.0,"confidence": 0.912 ,"accuracy": 1.0   ,"count": 25}
     ]},
-    {"nom_colonne": "Inhibition_Coagulation",          "model": "Model_PROTEOGEN_V3_OK/Coag_Inhibitor_PROTEOGEN_token_DoRA_CNN_model.keras",
+    {"nom_colonne": "Inhibition_Coagulation",          "model": "Model_TOKEN_CNN_PROTEOGEN_1280D/Coag_Inhibitor_PROTEOGEN_token_DoRA_CNN_model.keras",
      'brier': 0.10571146423768557, "ece": 0.031282, "platt_a": 4.9475, "platt_b": 2.179472, "n_val": 4256,
      "ece_bins": [
         {"bin_start": 0.0,"bin_end": 0.1,"confidence": 0.0146,"accuracy": 0.0337,"count": 1187},
@@ -601,7 +544,7 @@ ALL_MODULES = [
     "XAI — Alanine Scanning top-10",
     "Clustering PepFuNN : UMAP + Treemap",
     "Extraction FASTA + SignalP 6.0",
-    "ESMFold — Prédiction structure 3D peptides (.pdb + pLDDT)",
+    "ESMFold2 — Prédiction structure 3D peptides (.cif + pLDDT)",
 ]
 # ============================================================
 # FONCTIONS CŒUR — NE PAS MODIFIER
@@ -654,7 +597,7 @@ def generate_XAI_model(sequence, esm_model, alphabet, cnn_model, activity_name):
         esm_alinise    = esm_embeddings_token_level(esm_model, alphabet, seq_alinise)
         mc_alinise_pred = []
         for _ in range(mc_passes):
-            mc_alinise_pred.append(cnn_model(esm_alinise, training=True).numpy())
+            mc_alinise_pred.append((cnn_model(esm_alinise, training=True).numpy()) for _ in range(mc_passes))
         score_alinise = np.ravel(np.mean(mc_alinise_pred, axis=0))[-1]
         # Δ score : positif = AA important, négatif = AA défavorable
         impact = baseline_score - score_alinise
@@ -702,18 +645,6 @@ def plot_global_XAI(global_impacts, activity_name):
 # ============================================================
 # ESM-FOLD / Docking
 # ============================================================
-def _mean_plddt_from_pdb(pdb_str: str) -> float:
-    """pLDDT globale = moyenne des B-factors des atomes CA du PDB ESMFold (échelle 0–100)."""
-    vals = []
-    for line in pdb_str.splitlines():
-        if line.startswith(("ATOM", "HETATM")) and line[12:16].strip() == "CA":
-            try:
-                vals.append(float(line[60:66]))
-            except ValueError:
-                pass
-    return float(np.mean(vals)) if vals else float("nan")
-
-
 def run_esmfold_module(
     dataset,
     esm2_model=None,
@@ -727,7 +658,7 @@ def run_esmfold_module(
 
     Sélectionne, par activité de `esmfold_activities`, les peptides dont la colonne
     Peptide_<activité> >= `activity_threshold` (au plus `top_n`, triés proba décroissante),
-    les replie via esm.pretrained.esmfold_v1() (infer_pdb), écrit un .pdb par séquence unique
+    les replie via ESMFold2 (biohub/ESMFold2) en local sur GPU, écrit un .cif par séquence unique
     + un manifeste Excel, et reporte la pLDDT moyenne dans `dataset` (colonne ESMFold_pLDDT).
 
     Returns:
@@ -779,26 +710,25 @@ def run_esmfold_module(
     n_predicted, n_failed = 0, 0
     plddt_map, records = {}, []
 
-    # ── Chargement ESMFold v1 (GPU si disponible, repli CPU sinon) ────────────────
-    fold_model, device = None, "cpu"
+    # ── Chargement ESMFold2 (biohub/ESMFold2, GPU si disponible, repli CPU sinon) ──
+    fold_model, fold_builder, device = None, None, "cpu"
     if n_selected > 0:
         try:
-            fold_model = esm.pretrained.esmfold_v1().eval()
+            from transformers.models.esmfold2.modeling_esmfold2 import ESMFold2Model
+            from esm.models.esmfold2 import ESMFold2InputBuilder, ProteinInput, StructurePredictionInput
+            fold_model = ESMFold2Model.from_pretrained("biohub/ESMFold2").eval()
             if torch.cuda.is_available():
                 try:
                     fold_model = fold_model.cuda()
                     device = "cuda"
                 except RuntimeError as e:
                     logging.warning(f"ESM-Fold : GPU indisponible, repli CPU ({e})")
-                    fold_model, device = fold_model.cpu(), "cpu"
+                    fold_model = fold_model.cpu()
                     torch.cuda.empty_cache()
-            try:
-                fold_model.set_chunk_size(128)
-            except Exception:
-                pass
-            logging.info(f"ESM-Fold : esmfold_v1 chargé sur {device}")
+            fold_builder = ESMFold2InputBuilder()
+            logging.info(f"ESM-Fold : ESMFold2 (biohub/ESMFold2) chargé sur {device}")
         except Exception as e:
-            logging.error(f"ESM-Fold : échec chargement esmfold_v1 : {e}", exc_info=True)
+            logging.error(f"ESM-Fold : échec chargement ESMFold2 : {e}", exc_info=True)
             fold_model = None
     else:
         logging.info("ESM-Fold : aucune séquence sélectionnée — repliement ignoré")
@@ -807,12 +737,16 @@ def run_esmfold_module(
     if fold_model is not None:
         for idx, (cseq, rec) in enumerate(selection.items(), start=1):
             try:
+                spi = StructurePredictionInput(sequences=[ProteinInput(id="A", sequence=cseq)])
                 with torch.no_grad():
-                    pdb_str = fold_model.infer_pdb(cseq)
-                plddt = _mean_plddt_from_pdb(pdb_str)
-                fname = f"{idx:03d}_{cseq[:30]}.pdb"
+                    result = fold_builder.fold(
+                        fold_model, spi,
+                        num_loops=20, num_sampling_steps=100, num_diffusion_samples=1, seed=0,
+                    )
+                plddt = float(result.plddt.mean())
+                fname = f"{idx:03d}_{cseq[:30]}.cif"
                 with open(os.path.join(pdb_dir, fname), "w", encoding="utf-8") as fh:
-                    fh.write(pdb_str)
+                    fh.write(result.complex.to_mmcif())
                 plddt_map[cseq] = plddt
                 records.append({
                     "Peptide": rec["orig"],
@@ -821,10 +755,10 @@ def run_esmfold_module(
                     "Activities": ", ".join(sorted(rec["activities"])),
                     "Max_Proba": round(rec["max_proba"], 4),
                     "Mean_pLDDT": None if np.isnan(plddt) else round(plddt, 2),
-                    "PDB_File": fname,
+                    "Structure_File": fname,
                 })
                 n_predicted += 1
-                logging.info(f"ESM-Fold [{idx}/{n_selected}] {cseq[:20]}… pLDDT={plddt:.1f} → {fname}")
+                logging.info(f"ESM-Fold [{idx}/{n_selected}] {cseq[:20]}… pLDDT={plddt:.3f} → {fname}")
             except Exception as e:
                 n_failed += 1
                 logging.error(f"ESM-Fold : échec repliement '{cseq[:20]}…' : {e}")
@@ -2343,7 +2277,7 @@ def run_proteogen_pipeline(
                 try:
                     X_test_scaled = embeddings_memory
                     logging.info("Chargement du modèle CNN Keras")
-                    cnn_model = safe_load_model(config["model"])
+                    cnn_model = load_model(config["model"])
                     logging.info("-> Modèle Keras chargé dans la RAM")
                     logging.info(f"Monte Carlo Dropout : {mc_passes} passes")
                     mc_prediction = []
@@ -2731,7 +2665,7 @@ def run_proteogen_pipeline(
             logging.info(f"XAI top 10 pour : {nom}")
             top_10_df = df_global.sort_values(by=nom_col_tableau, ascending=False).head(10)
             try:
-                cnn_model = safe_load_model(config["model"])
+                cnn_model = load_model(config["model"])
                 global_aa_impacts = {aa: [] for aa in "ACDEFGHIKLMNPQRSTVWY"}
                 for _, row in top_10_df.iterrows():
                     seq_to_test = re.sub(r"[^ACDEFGHIKLMNPQRSTVWY]", "X",

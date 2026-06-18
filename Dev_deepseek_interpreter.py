@@ -108,7 +108,7 @@ def _build_cluster_context(master_xlsx: str, sheet: str, cluster_id: str, max_pe
         activity_means = {str(k).replace("Peptide_", ""): float(v) for k, v in means.items()}
 
     sort_col = "Proba_Max" if "Proba_Max" in df_filt.columns else None
-    top_peps = df_filt.nlargest(max_peptides, sort_col) if sort_col else df_filt.head(max_peptides)
+    top_peps = df_filt.nlargest(max_peptides, sort_col) if sort_col else df_filt.head(max_peptides) #type: ignore
     peptides_list = []
     for _, row in top_peps.iterrows():
         peptides_list.append({
